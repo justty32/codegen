@@ -184,16 +184,19 @@ def process_content(
     cfg: Config,
     scope: ScopeStore,
     ctx: RunContext,
-) -> str:
-    """Process all top-level blocks in *content*, returning the updated string.
+) -> tuple[str, bool]:
+    """Process all top-level blocks in *content*.
 
-    Each block is expanded in place.  on_error controls what happens on failure.
+    Returns (updated_text, had_failure). Each block is expanded in place;
+    on_error decides whether to keep going, abort the file, or raise AbortAll.
+    Per §10.4, the failure diagnostic is always emitted to stderr regardless
+    of which on_error mode is active.
     """
     from codegen.comment_syntax import lookup
 
     cs = lookup(ctx.file_path, overrides=dict(cfg.comment_syntax_overrides))
     if cs is None:
-        return content  # unknown extension: nothing to do
+        return content, False  # unknown extension: nothing to do
 
     blocks = find_top_level_blocks(
         content,
@@ -202,12 +205,13 @@ def process_content(
         cs=cs,
     )
     if not blocks:
-        return content
+        return content, False
 
     # Work with a mutable list of lines; offsets shift as we replace blocks.
     # Easiest: rebuild content string after each block (blocks are sequential).
     result = content
     line_offset = 0  # track how many lines the content has shifted so far
+    had_failure = False
 
     for block in blocks:
         # Adjust block position by accumulated line offset
@@ -227,12 +231,13 @@ def process_content(
         try:
             expand_res = expand_block(adjusted, cfg, scope, ctx)
         except BlockFailure as exc:
+            _emit_failure(exc)  # §10.4: always emit diagnostic
+            had_failure = True
             if cfg.on_error == "abort_all":
                 raise AbortAll(exc) from exc
             if cfg.on_error == "abort_file":
                 raise
-            # continue: emit diagnostic, keep original block text, move on
-            _emit_failure(exc)
+            # continue: keep original block text, move on
             continue
 
         replacement = expand_res.text
@@ -248,7 +253,7 @@ def process_content(
 
         result = _splice(result, adjusted, replacement)
 
-    return result
+    return result, had_failure
 
 
 def _emit_failure(exc: BlockFailure) -> None:

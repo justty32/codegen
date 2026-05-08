@@ -286,12 +286,58 @@ def test_process_content_continue_on_error(tmp_path):
         return "good\n", 0.1
 
     with patch("codegen.expander._run_block", side_effect=fake_run):
-        result = process_content(content, cfg, scope, ctx)
+        result, had_failure = process_content(content, cfg, scope, ctx)
 
     scope.cleanup()
     assert call_count[0] == 2            # second block was still attempted
     assert "CODEGEN_START" in result     # first block kept as-is
     assert "good" in result              # second block expanded
+    # §10.1: continue mode must still propagate failure so exit code is non-zero.
+    assert had_failure is True
+
+
+def test_process_content_emits_diagnostic_in_abort_file(tmp_path, capsys):
+    """§10.4: failure diagnostic must be printed regardless of on_error mode."""
+    content = "/* CODEGEN_START\n#!/usr/bin/env python3\npass\nCODEGEN_END */\n"
+    fp = tmp_path / "test.c"
+    fp.write_text(content)
+    cfg = Config(on_error="abort_file")
+    scope = _scope(tmp_path)
+    ctx = _make_ctx(tmp_path, fp)
+
+    block_ref = find_top_level_blocks(content, file_path=fp, markers=cfg.markers, cs=_C)[0]
+    failure = BlockFailure(block=block_ref, reason="exit:7", last_stderr="boom")
+
+    with patch("codegen.expander._run_block", side_effect=failure):
+        with pytest.raises(BlockFailure):
+            process_content(content, cfg, scope, ctx)
+
+    scope.cleanup()
+    err = capsys.readouterr().err
+    assert "exit:7" in err
+    assert "boom" in err
+
+
+def test_process_content_emits_diagnostic_in_abort_all(tmp_path, capsys):
+    """§10.4: abort_all must also emit the diagnostic before raising AbortAll."""
+    content = "/* CODEGEN_START\n#!/usr/bin/env python3\npass\nCODEGEN_END */\n"
+    fp = tmp_path / "test.c"
+    fp.write_text(content)
+    cfg = Config(on_error="abort_all")
+    scope = _scope(tmp_path)
+    ctx = _make_ctx(tmp_path, fp)
+
+    block_ref = find_top_level_blocks(content, file_path=fp, markers=cfg.markers, cs=_C)[0]
+    failure = BlockFailure(block=block_ref, reason="exit:9", last_stderr="kaboom")
+
+    with patch("codegen.expander._run_block", side_effect=failure):
+        with pytest.raises(AbortAll):
+            process_content(content, cfg, scope, ctx)
+
+    scope.cleanup()
+    err = capsys.readouterr().err
+    assert "exit:9" in err
+    assert "kaboom" in err
 
 
 def test_process_content_abort_all(tmp_path):
@@ -336,7 +382,7 @@ def test_process_content_first_block_no_trailing_newline(tmp_path):
         return next(outputs), 0.1
 
     with patch("codegen.expander._run_block", side_effect=fake_run):
-        result = process_content(content, cfg, scope, ctx)
+        result, _ = process_content(content, cfg, scope, ctx)
 
     scope.cleanup()
     assert "AAA" in result

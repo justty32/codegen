@@ -52,7 +52,7 @@ def test_single_block_c(tmp_path):
     scope = ScopeStore.create()
     try:
         scope.open_file()
-        result = process_content(C_SINGLE, cfg, scope, _ctx(tmp_path, fp))
+        result, _ = process_content(C_SINGLE, cfg, scope, _ctx(tmp_path, fp))
     finally:
         scope.cleanup()
 
@@ -80,7 +80,7 @@ def test_single_block_indented(tmp_path):
     scope = ScopeStore.create()
     try:
         scope.open_file()
-        result = process_content(content, cfg, scope, _ctx(tmp_path, fp))
+        result, _ = process_content(content, cfg, scope, _ctx(tmp_path, fp))
     finally:
         scope.cleanup()
 
@@ -108,7 +108,7 @@ def test_two_blocks(tmp_path):
     scope = ScopeStore.create()
     try:
         scope.open_file()
-        result = process_content(content, cfg, scope, _ctx(tmp_path, fp))
+        result, _ = process_content(content, cfg, scope, _ctx(tmp_path, fp))
     finally:
         scope.cleanup()
 
@@ -136,7 +136,7 @@ def test_keep_as_comment(tmp_path):
     scope = ScopeStore.create()
     try:
         scope.open_file()
-        result = process_content(content, cfg, scope, _ctx(tmp_path, fp))
+        result, _ = process_content(content, cfg, scope, _ctx(tmp_path, fp))
     finally:
         scope.cleanup()
 
@@ -163,7 +163,7 @@ def test_block_failure_continue(tmp_path):
     scope = ScopeStore.create()
     try:
         scope.open_file()
-        result = process_content(content, cfg, scope, _ctx(tmp_path, fp))
+        result, _ = process_content(content, cfg, scope, _ctx(tmp_path, fp))
     finally:
         scope.cleanup()
 
@@ -251,7 +251,7 @@ def test_scope_file_shared_across_blocks(tmp_path):
     scope = ScopeStore.create()
     try:
         scope.open_file()
-        result = process_content(content, cfg, scope, _ctx(tmp_path, fp))
+        result, _ = process_content(content, cfg, scope, _ctx(tmp_path, fp))
     finally:
         scope.cleanup()
 
@@ -275,7 +275,7 @@ def test_implicit_python3(tmp_path):
     scope = ScopeStore.create()
     try:
         scope.open_file()
-        result = process_content(content, cfg, scope, _ctx(tmp_path, fp))
+        result, _ = process_content(content, cfg, scope, _ctx(tmp_path, fp))
     finally:
         scope.cleanup()
 

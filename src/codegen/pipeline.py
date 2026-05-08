@@ -75,7 +75,7 @@ def process_file(
         if backup_dir is not None and file_cfg.backup:
             snapshot_file(path, backup_dir, run_id)
 
-        result = process_content(content, file_cfg, scope, run_ctx)
+        result, had_failure = process_content(content, file_cfg, scope, run_ctx)
 
         if dry_run:
             print(result, end="")
@@ -85,9 +85,8 @@ def process_file(
     except AbortAll:
         raise
     except BlockFailure:
+        # abort_file path: process_content already emitted the diagnostic.
         had_failure = True
-        if file_cfg.on_error == "abort_file":
-            pass  # already handled inside process_content
     finally:
         scope.close_file()
         try:
