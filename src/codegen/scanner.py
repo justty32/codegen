@@ -23,8 +23,13 @@ def _collect_dir(
     effective_extensions: tuple[str, ...],
 ) -> list[Path]:
     results: list[Path] = []
+    # Hardcoded ignore list for safety
+    ignore_dirs = {".git", "__pycache__", ".pytest_cache", ".codegen-backup", str(cfg.backup_dir.name)}
+
     for child in sorted(directory.iterdir()):
         if child.is_dir():
+            if child.name in ignore_dirs:
+                continue
             results.extend(_collect_dir(child, cfg, root, effective_extensions))
         elif child.is_file():
             if cfg.exclude and _matches_any(child, cfg.exclude, root):
