@@ -63,3 +63,28 @@ def test_main_no_files_returns_zero(tmp_path):
     from codegen.cli import main
     code = main(["run", str(tmp_path)])
     assert code == 0
+
+
+def test_run_state_module_global_is_updated(tmp_path):
+    """_run_state must be visible to the SIGINT handler — i.e. set on the module,
+    not as a local variable. Regression for missing 'global' declaration."""
+    from unittest.mock import patch
+    from codegen import cli
+    from codegen.errors import EXIT_OK
+
+    f = tmp_path / "foo.c"
+    f.write_text("int main(){return 0;}\n")
+
+    cli._run_state = None
+
+    captured: dict = {}
+
+    def fake_run_all(files, cfg, *, run_id, dry_run, state):
+        captured["module_state"] = cli._run_state
+        return EXIT_OK
+
+    with patch("codegen.pipeline.run_all", side_effect=fake_run_all):
+        cli.main(["run", str(tmp_path)])
+
+    assert captured["module_state"] is not None
+    assert cli._run_state is not None

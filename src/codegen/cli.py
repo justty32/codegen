@@ -119,8 +119,6 @@ def _cli_overrides(args: argparse.Namespace) -> dict:
 # ---------- entry point ----------
 
 def main(argv: Sequence[str] | None = None) -> int:
-    global _run_state
-
     signal.signal(signal.SIGINT, _sigint_handler)
 
     parser = _build_parser()
@@ -142,6 +140,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _run_run(args: argparse.Namespace) -> int:
+    global _run_state
     from codegen.errors import EXIT_ABORT_ALL
     from codegen.pipeline import run_all
 
