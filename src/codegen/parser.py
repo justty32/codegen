@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
@@ -85,7 +86,7 @@ def parse_block_header(inner_text: str) -> tuple[str | None, dict[str, str], str
 
     shebang: str | None = None
     if lines and lines[0].lstrip().startswith("#!"):
-        shebang = lines[0].rstrip("\r\n")
+        shebang = lines[0].strip()
         idx = 1
 
     pragma: dict[str, str] = {}
@@ -189,6 +190,7 @@ def find_top_level_blocks(
                 else:
                     inner = _extract_inner_line_style(lines, start_idx, end_idx, cs)
 
+                inner = textwrap.dedent(inner)
                 shebang, pragma, body = parse_block_header(inner)
                 blocks.append(
                     Block(

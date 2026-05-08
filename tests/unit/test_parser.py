@@ -105,6 +105,25 @@ def test_find_blocks_c_indented():
     blocks = find_top_level_blocks(content, file_path=_FILE, markers=("CODEGEN_START", "CODEGEN_END"), cs=_C)
     assert len(blocks) == 1
     assert blocks[0].indent == "    "
+    assert blocks[0].shebang == "#!/usr/bin/env python3"
+    assert blocks[0].body == 'print("x")\n'
+
+
+def test_find_blocks_dedented():
+    content = (
+        "  /* CODEGEN_START\n"
+        "     #!/usr/bin/env python3\n"
+        "     if True:\n"
+        "         print('hi')\n"
+        "     CODEGEN_END */\n"
+    )
+    blocks = find_top_level_blocks(content, file_path=_FILE, markers=("CODEGEN_START", "CODEGEN_END"), cs=_C)
+    assert len(blocks) == 1
+    b = blocks[0]
+    # Check that shebang is at column 0
+    assert b.shebang == "#!/usr/bin/env python3"
+    # Check that body is also correctly dedented relative to shebang
+    assert b.body == "if True:\n    print('hi')\n"
 
 
 def test_find_blocks_c_two():
