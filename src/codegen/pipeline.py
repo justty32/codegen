@@ -68,6 +68,7 @@ def process_file(
 
     scope.open_file()
     had_failure = False
+    result = content
 
     try:
         # Backup before any mutation
@@ -95,7 +96,7 @@ def process_file(
         except OSError:
             pass
 
-    return content if dry_run else "", had_failure
+    return result, had_failure
 
 
 def run_all(

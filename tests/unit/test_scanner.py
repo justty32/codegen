@@ -61,3 +61,25 @@ def test_missing_target_raises(tmp_path):
     from codegen.errors import ConfigError
     with pytest.raises(ConfigError, match="not found"):
         collect_files([tmp_path / "nonexistent"], Config())
+
+
+def test_backup_dir_name_does_not_pollute_ignore(tmp_path):
+    """A backup_dir whose .name happens to match a real source dir must not skip it."""
+    _write(tmp_path / "build" / "lib.py", "# src\n")
+    backup = tmp_path / "elsewhere" / "build"
+    cfg = Config(backup_dir=backup)
+    result = collect_files([tmp_path], cfg)
+    names = {p.name for p in result}
+    assert "lib.py" in names
+
+
+def test_actual_backup_dir_is_skipped(tmp_path):
+    """The configured backup directory itself should be skipped during scan."""
+    _write(tmp_path / "src" / "main.py", "# src\n")
+    backup = tmp_path / "my-backup"
+    _write(backup / "stale.py", "# old\n")
+    cfg = Config(backup_dir=backup)
+    result = collect_files([tmp_path], cfg)
+    names = {p.name for p in result}
+    assert "main.py" in names
+    assert "stale.py" not in names

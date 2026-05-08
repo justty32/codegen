@@ -61,7 +61,7 @@ def _pragma_from_text(text: str) -> dict[str, str]:
         return {}
     payload = match.group(1).strip()
     # strip trailing comment-close markers
-    for close in ("*/", "-->", "*/"):
+    for close in ("*/", "-->"):
         if payload.endswith(close):
             payload = payload[: -len(close)].rstrip()
     result: dict[str, str] = {}

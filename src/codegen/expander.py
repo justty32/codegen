@@ -74,6 +74,7 @@ def expand_block(
     # Snapshot scope dicts before touching this block (§10.5)
     scope.open_block()
     scope.snapshot()
+    snapshot_finalized = False
 
     # Create origin_block snapshot (§4.2)
     origin_block_path = _write_tmp(block.inner_text)
@@ -156,6 +157,7 @@ def expand_block(
                 )
 
         scope.commit()
+        snapshot_finalized = True
 
         if block_cfg.keep_as_comment:
             region = _keep_as_comment(original_raw, block, region)
@@ -164,8 +166,12 @@ def expand_block(
 
     except BlockFailure:
         scope.restore()
+        snapshot_finalized = True
         raise
     finally:
+        if not snapshot_finalized:
+            # Non-BlockFailure exception: restore so the snapshot doesn't leak.
+            scope.restore()
         try:
             origin_block_path.unlink()
         except OSError:
@@ -229,11 +235,18 @@ def process_content(
             _emit_failure(exc)
             continue
 
-        old_line_count = adjusted.raw_block_text.count("\n")
-        new_line_count = expand_res.text.count("\n")
+        replacement = expand_res.text
+        # If the original block was line-terminated, the replacement must be too —
+        # otherwise the line that follows the block would be merged into the last
+        # line of the replacement, corrupting the file and shifting later blocks.
+        if adjusted.raw_block_text.endswith("\n") and replacement and not replacement.endswith("\n"):
+            replacement += "\n"
+
+        old_line_count = len(adjusted.raw_block_text.splitlines())
+        new_line_count = len(replacement.splitlines())
         line_offset += new_line_count - old_line_count
 
-        result = _splice(result, adjusted, expand_res.text)
+        result = _splice(result, adjusted, replacement)
 
     return result
 

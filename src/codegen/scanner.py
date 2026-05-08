@@ -21,16 +21,19 @@ def _collect_dir(
     cfg: Config,
     root: Path,
     effective_extensions: tuple[str, ...],
+    backup_dir_resolved: Path | None,
 ) -> list[Path]:
     results: list[Path] = []
     # Hardcoded ignore list for safety
-    ignore_dirs = {".git", "__pycache__", ".pytest_cache", ".codegen-backup", str(cfg.backup_dir.name)}
+    ignore_dirs = {".git", "__pycache__", ".pytest_cache", ".codegen-backup"}
 
     for child in sorted(directory.iterdir()):
         if child.is_dir():
             if child.name in ignore_dirs:
                 continue
-            results.extend(_collect_dir(child, cfg, root, effective_extensions))
+            if backup_dir_resolved is not None and child.resolve() == backup_dir_resolved:
+                continue
+            results.extend(_collect_dir(child, cfg, root, effective_extensions, backup_dir_resolved))
         elif child.is_file():
             if cfg.exclude and _matches_any(child, cfg.exclude, root):
                 continue
@@ -51,6 +54,7 @@ def collect_files(targets: Sequence[Path], cfg: Config) -> list[Path]:
     - If a target is a directory: recurse with extensions/include/exclude filter.
     """
     effective_extensions = cfg.extensions if cfg.extensions else default_extensions()
+    backup_dir_resolved = cfg.backup_dir.resolve() if cfg.backup else None
 
     result: list[Path] = []
     for target in targets:
@@ -58,7 +62,12 @@ def collect_files(targets: Sequence[Path], cfg: Config) -> list[Path]:
         if target.is_file():
             result.append(target)
         elif target.is_dir():
-            result.extend(_collect_dir(target, cfg, root=target, effective_extensions=effective_extensions))
+            result.extend(_collect_dir(
+                target, cfg,
+                root=target,
+                effective_extensions=effective_extensions,
+                backup_dir_resolved=backup_dir_resolved,
+            ))
         else:
             from codegen.errors import ConfigError
             raise ConfigError(f"target not found: {target}")

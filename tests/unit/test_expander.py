@@ -312,6 +312,40 @@ def test_process_content_abort_all(tmp_path):
     scope.cleanup()
 
 
+# ---------- multi-block line offset (regression) ----------
+
+def test_process_content_first_block_no_trailing_newline(tmp_path):
+    """First block's stdout missing a trailing newline must not eat the second block."""
+    content = (
+        "# CODEGEN_START\n"
+        '# print("AAA", end="")\n'
+        "# CODEGEN_END\n"
+        "# CODEGEN_START\n"
+        '# print("BBB")\n'
+        "# CODEGEN_END\n"
+    )
+    fp = tmp_path / "test.py"
+    fp.write_text(content)
+    cfg = Config()
+    scope = _scope(tmp_path)
+    ctx = _make_ctx(tmp_path, fp)
+
+    outputs = iter(["AAA", "BBB\n"])  # first has no trailing newline
+
+    def fake_run(b, *, env, cwd, max_pass_time, pass_outputs):
+        return next(outputs), 0.1
+
+    with patch("codegen.expander._run_block", side_effect=fake_run):
+        result = process_content(content, cfg, scope, ctx)
+
+    scope.cleanup()
+    assert "AAA" in result
+    assert "BBB" in result
+    # No remaining markers — both blocks fully expanded.
+    assert "CODEGEN_START" not in result
+    assert "CODEGEN_END" not in result
+
+
 # ---------- pragma inheritance in nested expansion ----------
 
 def test_pragma_inherited_by_nested(tmp_path):
