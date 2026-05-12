@@ -163,41 +163,44 @@ CODEGEN_END */
 
 ```toml
 # Marker（預設 CODEGEN_START / CODEGEN_END）
-markers = ["CODEGEN_START", "CODEGEN_END"]
+markers = ["CODEGEN_START", "CODEGEN_END"]  # 識別 block 起止的標記字串，可自訂以避免與現有程式碼字串衝突
 
 # 掃描設定
-extensions = [".c", ".h", ".cpp"]
-include = ["tools/**/*.gen"]
-exclude = ["**/build/**", "**/.venv/**"]
-scan_all = false
+extensions = [".c", ".h", ".cpp"]           # 掃描目錄時只處理這些副檔名；CLI 直接指定檔案路徑時不套用此過濾
+include = ["tools/**/*.gen"]                # 額外納入的 glob，疊加在 extensions 之上（副檔名不在清單也會被掃到）
+exclude = ["**/build/**", "**/.venv/**"]    # 排除的 glob，優先於 include 與 extensions
+scan_all = false                            # true 時忽略 extensions、掃描目錄下所有檔案（仍套用 exclude）
 
 # 自訂副檔名 → 註解語法
 [comment_syntax]
-".pyx" = "#"
-".kts" = "/* */"
+".pyx" = "#"     # Cython：用 # 行註解包住 marker
+".kts" = "/* */" # Kotlin Script：用 /* */ 區塊註解包住 marker
 
 # 展開上限
-max_passes = 1
-max_total_time = 5.0
-max_pass_time = 5.0
+max_passes = 1         # 單一 block 最多展開幾輪；預設 1 表示不允許嵌套，需要嵌套時調高
+max_total_time = 5.0   # 單一 block 從第一輪到穩定的累積時間上限（秒），防止無限嵌套
+max_pass_time = 5.0    # 單次 subprocess 執行時間上限（秒），超過即強制終止該 subprocess
 
 # 輸出
-keep_as_comment = false
-auto_indent = true
+keep_as_comment = false  # true 時把原始 block 以該語言的行註解保留在輸出上方（僅供參考，不會再被識別執行）
+auto_indent = true       # true 時自動把 stdout 每行對齊到原 block 在檔案中的縮排層級
 
 # 備份
-backup = true
-backup_dir = ".codegen-backup"
+backup = true                   # true 時執行前自動備份所有被處理的檔案
+backup_dir = ".codegen-backup"  # 備份根目錄路徑（建議加入 .gitignore）
 
 # 錯誤處理
-on_error = "continue"   # continue | abort_file | abort_all
+# continue：跳過失敗 block，繼續後面的 block 與其他檔案
+# abort_file：停止當前檔案剩餘 block，繼續下一個檔案
+# abort_all：立即中止整個批次（等同 CLI --strict）
+on_error = "continue"
 
 # Subprocess 的 working directory（預設為執行 codegen 時的 cwd）
-cwd = "."
+cwd = "."  # 相對路徑以執行 codegen 時的 cwd 為基準；可讓腳本以固定路徑存取專案資源
 
 # 注入給腳本的環境變數
 [env]
-PROJECT_ROOT = "/path/to/project"
+PROJECT_ROOT = "/path/to/project"  # 傳給所有 subprocess 的自訂環境變數，可在腳本內透過 os.environ 取用
 ```
 
 ### 欄位說明
@@ -223,7 +226,12 @@ PROJECT_ROOT = "/path/to/project"
 
 ### File pragma
 
-檔案最頂部的第一個 block-style 或 line-style 註解中寫入：
+在**檔案最頂部的第一個普通註解**（非 CODEGEN block，不含 marker）中寫入 `codegen: ...`：
+
+- **block-style 語言**（`/* */`、`<!-- -->`）：檔案最頂部的第一段區塊註解
+- **line-style 語言**（`#`、`//`）：檔案第一行起連續的行註解區塊
+
+只要該註解內有 `codegen:` 行就會被識別為 file pragma，否則視為一般註解忽略。
 
 ```c
 /* codegen: markers=<<<,>>> */
@@ -247,12 +255,15 @@ CODEGEN_END */
 
 **語法規則**：
 - `key=value` 以空格分隔，不能有引號
+- `=` 前後**不可有空格**（`key = value` 無效，會報錯）
 - 布林值寫 `true` / `false`
 - list 以逗號分隔（如 `markers=<<<,>>>`）
 
 ### 環境變數
 
 慣例：`CODEGEN_<設定名大寫>=值`。值格式與 pragma 相同（逗號分隔 list、`true`/`false` 布林）。
+
+這些環境變數在 block 腳本執行時也可透過 `os.environ`（或各語言等效方式）讀取，因為 subprocess 繼承了啟動 codegen 時的完整環境。
 
 | 環境變數 | 說明 | 預設值 |
 |---|---|---|
@@ -284,28 +295,35 @@ codegen rollback [paths...] [options]
 
 ### codegen run
 
+**常用選項**
+
 | 選項 | 說明 |
 |---|---|
 | `paths...` | 要處理的檔案或目錄（可多個，預設為 `.`） |
+| `--dry-run` | 執行腳本但結果不寫回 disk，改印到 stdout |
+| `--strict` | 任何 block 失敗即中止整批（等同 `--on-error abort_all`） |
+| `--no-backup` | 關閉備份 |
+| `--ext <list>` | 覆寫副檔名白名單（逗號分隔，如 `.c,.h,.cpp`） |
+| `--exclude <glob>` | 排除的 glob，可重複使用 |
+| `--env KEY=VAL` | 注入給 subprocess 的環境變數，可重複使用 |
+
+**進階選項**
+
+| 選項 | 說明 |
+|---|---|
 | `--config <path>` | 顯式指定 codegen.toml，跳過自動向上搜尋 |
 | `--markers <start,end>` | 覆寫 marker（例：`--markers <<<,>>>`） |
 | `--keep-as-comment` | 把原始 block 保留為上方註解 |
 | `--auto-indent` | 開啟自動對齊（預設已開） |
 | `--no-auto-indent` | 關閉自動對齊 |
-| `--no-backup` | 關閉備份 |
 | `--backup-dir <path>` | 指定備份根目錄 |
 | `--all` | 忽略副檔名清單，掃描所有檔案 |
-| `--ext <list>` | 覆寫副檔名白名單（逗號分隔，如 `.c,.h,.cpp`） |
 | `--include <glob>` | 額外納入的 glob，可重複使用 |
-| `--exclude <glob>` | 排除的 glob，可重複使用 |
+| `--on-error <mode>` | `continue` \| `abort_file` \| `abort_all` |
 | `--max-passes <n>` | 單一 block 最大展開輪數（預設 `1`） |
 | `--max-total-time <sec>` | Block 整體展開時間上限（預設 `5.0`） |
 | `--max-pass-time <sec>` | 單次 subprocess 執行時間上限（預設 `5.0`） |
-| `--on-error <mode>` | `continue` \| `abort_file` \| `abort_all` |
-| `--strict` | 等同 `--on-error abort_all` |
 | `--cwd <path>` | 覆寫 subprocess 的 working directory |
-| `--env KEY=VAL` | 注入給 subprocess 的環境變數，可重複使用 |
-| `--dry-run` | 執行腳本但結果不寫回 disk，改印到 stdout |
 
 ### codegen rollback
 

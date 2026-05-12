@@ -177,6 +177,68 @@ def test_find_blocks_none():
     assert blocks == []
 
 
+# ---------- find_top_level_blocks: malformed nesting ----------
+
+
+def test_find_blocks_nested_start_end():
+    """START START END END → one outer block; inner markers are body content."""
+    content = (
+        "/* CODEGEN_START\n"
+        "#!/usr/bin/env python3\n"
+        "# CODEGEN_START inner\n"
+        "# CODEGEN_END inner\n"
+        "CODEGEN_END */\n"
+    )
+    blocks = find_top_level_blocks(content, file_path=_FILE, markers=("CODEGEN_START", "CODEGEN_END"), cs=_C)
+    assert len(blocks) == 1
+    assert blocks[0].start_line == 1
+    assert blocks[0].end_line == 5
+
+
+def test_find_blocks_orphan_end_ignored():
+    """A lone END with no preceding START is silently ignored."""
+    content = "CODEGEN_END */\nint main() {}\n"
+    blocks = find_top_level_blocks(content, file_path=_FILE, markers=("CODEGEN_START", "CODEGEN_END"), cs=_C)
+    assert blocks == []
+
+
+def test_find_blocks_extra_end_after_block_ignored():
+    """A valid block followed by an extra END — only the valid block is returned."""
+    content = (
+        "/* CODEGEN_START\n"
+        "#!/usr/bin/env python3\n"
+        "pass\n"
+        "CODEGEN_END */\n"
+        "CODEGEN_END */\n"
+    )
+    blocks = find_top_level_blocks(content, file_path=_FILE, markers=("CODEGEN_START", "CODEGEN_END"), cs=_C)
+    assert len(blocks) == 1
+    assert blocks[0].start_line == 1
+    assert blocks[0].end_line == 4
+
+
+def test_find_blocks_unclosed_start_dropped():
+    """START with no matching END is silently dropped — returns no blocks."""
+    content = (
+        "/* CODEGEN_START\n"
+        "#!/usr/bin/env python3\n"
+        "pass\n"
+    )
+    blocks = find_top_level_blocks(content, file_path=_FILE, markers=("CODEGEN_START", "CODEGEN_END"), cs=_C)
+    assert blocks == []
+
+
+def test_find_blocks_double_unclosed_start_dropped():
+    """START START END — inner END closes depth to 1 but outer never closes; returns no blocks."""
+    content = (
+        "/* CODEGEN_START\n"
+        "/* CODEGEN_START\n"
+        "CODEGEN_END */\n"
+    )
+    blocks = find_top_level_blocks(content, file_path=_FILE, markers=("CODEGEN_START", "CODEGEN_END"), cs=_C)
+    assert blocks == []
+
+
 # ---------- find_top_level_blocks: custom markers ----------
 
 
