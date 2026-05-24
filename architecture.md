@@ -417,9 +417,9 @@ class RunState:
 
 `kind` ∈ `{"sigint", "abort_all"}`，影響抬頭文字（§12.2 / §12.3）。
 
-## 15. Helper module（`helper.py`）
+## 15. Helper module（公開本體 `src/codegen_helper.py`；`codegen/helper.py` 為別名）
 
-對 block 腳本暴露的便利 API：
+對 block 腳本暴露的便利 API。**實作位置**：公開模組是 top-level 的 `src/codegen_helper.py`（pyproject 用 `force-include` 裝成頂層可 import）；package 內的 `codegen/helper.py` 只是 `from codegen_helper import *` 的轉出別名。要改 helper 行為改前者。
 
 ```python
 import codegen_helper as cg
@@ -447,47 +447,48 @@ cg.file_path() -> str
 codegen/
 ├── DESIGN.md
 ├── architecture.md            # 本文件
+├── for_agent.md               # 給 AI agent 的使用手冊
+├── agent_skills.md            # 新增 / 補全 block 的操作 playbook
+├── intro.md                   # 一頁速覽
 ├── pyproject.toml
 ├── README.md
 ├── src/
-│   └── codegen/
-│       ├── __init__.py
-│       ├── __main__.py        # python -m codegen
-│       ├── cli.py
-│       ├── config.py
-│       ├── comment_syntax.py
-│       ├── scanner.py
-│       ├── parser.py
-│       ├── expander.py
-│       ├── executor.py
-│       ├── env.py
-│       ├── scope.py
-│       ├── indent.py
-│       ├── backup.py
-│       ├── rollback.py
-│       ├── pipeline.py
-│       ├── progress.py
-│       ├── errors.py
-│       └── helper.py          # 同時也是使用者腳本可 import 的 codegen_helper
+│   ├── codegen/
+│   │   ├── __init__.py
+│   │   ├── __main__.py        # python -m codegen
+│   │   ├── cli.py
+│   │   ├── config.py
+│   │   ├── comment_syntax.py
+│   │   ├── scanner.py
+│   │   ├── parser.py
+│   │   ├── expander.py
+│   │   ├── executor.py
+│   │   ├── env.py
+│   │   ├── scope.py
+│   │   ├── indent.py
+│   │   ├── backup.py
+│   │   ├── rollback.py
+│   │   ├── pipeline.py
+│   │   ├── progress.py
+│   │   ├── errors.py
+│   │   └── helper.py          # 內部別名：from codegen_helper import *
+│   └── codegen_helper.py      # 公開 helper（使用者腳本 import codegen_helper）
 └── tests/
     ├── unit/
     │   ├── test_config.py
-    │   ├── test_parser.py
-    │   ├── test_pragma.py
+    │   ├── test_parser.py        # 含 pragma / shebang 切分
+    │   ├── test_comment_syntax.py
     │   ├── test_scanner.py
     │   ├── test_indent.py
     │   ├── test_scope.py
-    │   └── test_expander.py
-    ├── integration/
-    │   ├── test_pipeline.py        # 實際 spawn 子程序、跑單檔
-    │   └── test_rollback.py
-    └── fixtures/
-        ├── single_block.c
-        ├── nested_blocks.py
-        └── ...
+    │   ├── test_expander.py
+    │   ├── test_backup.py
+    │   └── test_cli.py
+    └── integration/
+        └── test_pipeline_basic.py  # 實際 spawn 子程序、跑單檔（fixture 內嵌於測試）
 ```
 
-`codegen_helper` 透過 pyproject 的 `[tool.setuptools.packages.find]` + 別名（或單獨小檔）讓使用者腳本能 `import codegen_helper`；初版可直接讓 `helper.py` 在 sys.path 上以 `codegen_helper` 名稱註冊。
+`codegen_helper` 透過 pyproject 的 `[tool.hatch.build.targets.wheel.force-include]`（把 `src/codegen_helper.py` 裝成頂層模組）讓使用者腳本能 `import codegen_helper`；`codegen/helper.py` 則以 `from codegen_helper import *` 轉出同一套 API 作為內部別名。
 
 ## 17. 測試策略
 
@@ -495,7 +496,7 @@ codegen/
 |---|---|---|
 | Unit | parser / pragma / config merge / indent / scope snapshot | pytest，純函式 |
 | Integration | pipeline 端對端跑單檔，spawn 真子程序，斷言檔案最終內容 | pytest + tmp_path fixture |
-| CLI smoke | 拿真實小範例跑 `python -m codegen run fixtures/single_block.c` | pytest + capsys |
+| CLI smoke | 用 `tmp_path` 寫小範例跑 `python -m codegen run <file>` | pytest + capsys |
 | Rollback | snapshot → 跑 → rollback → 比對檔案內容 | pytest |
 
 涵蓋的關鍵情境：
