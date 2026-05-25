@@ -23,12 +23,12 @@ static RunState* g_run_state = nullptr;
 static void sigint_handler(int) {
     if (g_cancel) {
         // Second Ctrl+C: hard exit
-        std::_Exit(EXIT_SIGINT);
+        exit(EXIT_SIGINT);
     }
     g_cancel = 1;
     if (g_run_state)
         report_interrupt(*g_run_state, "sigint");
-    std::_Exit(EXIT_SIGINT);
+    exit(EXIT_SIGINT);
 }
 
 // ---- helpers ----
