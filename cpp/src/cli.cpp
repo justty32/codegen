@@ -158,6 +158,24 @@ static int cmd_run(
 int main(int argc, char* argv[]) {
     std::signal(SIGINT, sigint_handler);
 
+    // Mirror the documented CLI (DESIGN §11): `run` is the default command and
+    // may be omitted. If the first argument is not a known subcommand or a help
+    // flag, treat the whole invocation as an implicit `run`.
+    std::vector<std::string> raw;
+    for (int i = 1; i < argc; i++) raw.emplace_back(argv[i]);
+    bool implicit_run = raw.empty() ||
+        (raw[0] != "run" && raw[0] != "rollback" &&
+         raw[0] != "-h"  && raw[0] != "--help");
+    if (implicit_run)
+        raw.insert(raw.begin(), "run");
+
+    std::string prog = (argc > 0) ? argv[0] : "codegen";
+    std::vector<char*> new_argv;
+    new_argv.push_back(prog.data());
+    for (auto& s : raw) new_argv.push_back(s.data());
+    int   new_argc = static_cast<int>(new_argv.size());
+    char** argv_p  = new_argv.data();
+
     CLI::App app{"Cross-language in-source code generation tool."};
     app.name("codegen");
 
@@ -234,16 +252,10 @@ int main(int argc, char* argv[]) {
     std::optional<std::string> rb_backup_dir;
     rb_cmd->add_option("--backup-dir", rb_backup_dir, "Backup root directory");
 
-    // ---- default to 'run' if no subcommand ----
-    app.require_subcommand(0, 1);
+    // Exactly one subcommand is expected (implicit `run` was injected above).
+    app.require_subcommand(1, 1);
 
-    CLI11_PARSE(app, argc, argv);
-
-    // If no subcommand, treat as 'run'
-    if (!run_cmd->parsed() && !rb_cmd->parsed()) {
-        // Re-parse with 'run' prepended — not needed; just invoke run directly
-        // with empty paths (will use cwd)
-    }
+    CLI11_PARSE(app, new_argc, argv_p);
 
     if (rb_cmd->parsed()) {
         std::vector<fs::path> rb_path_list;
