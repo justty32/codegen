@@ -12,13 +12,20 @@
 
 static fs::path make_tmpdir() {
 #ifdef _WIN32
-    char buf[MAX_PATH];
-    GetTempPathA(MAX_PATH, buf);
-    std::string base = std::string(buf) + "codegen_scope_";
-    // crude: use PID
-    base += std::to_string(GetCurrentProcessId());
-    fs::create_directories(base);
-    return base;
+    char tmp_base[MAX_PATH];
+    GetTempPathA(MAX_PATH, tmp_base);
+    // Use PID + tick count to get a unique directory name
+    DWORD pid  = GetCurrentProcessId();
+    ULONGLONG tick = GetTickCount64();
+    char path[MAX_PATH];
+    // Try up to 32 candidates in case of collision
+    for (int i = 0; i < 32; i++) {
+        snprintf(path, MAX_PATH, "%scodegen_scope_%lu_%llu_%d",
+                 tmp_base, static_cast<unsigned long>(pid), tick, i);
+        if (CreateDirectoryA(path, nullptr))
+            return path;
+    }
+    throw std::runtime_error("cannot create temp scope directory");
 #else
     char tmpl[] = "/tmp/codegen_scope_XXXXXX";
     char* dir = mkdtemp(tmpl);
