@@ -17,24 +17,38 @@
 
 static const char* FALLBACK_SHEBANG = "#!/usr/bin/env python3";
 
-// Write script to a temp file, chmod it, return the path.
+// Write script to a temp file, make it executable, return the path.
+// execve relies on the shebang line, so the file MUST have the execute bit set.
 static std::string write_script(const std::string& shebang, const std::string& body) {
     std::string content = (shebang.empty() ? FALLBACK_SHEBANG : shebang) + "\n" + body;
 
     char tmpl[] = "/tmp/codegen_XXXXXX";
     int fd = mkstemp(tmpl);
     if (fd < 0) throw std::runtime_error(std::string("mkstemp: ") + strerror(errno));
-    // Rename to add .sh suffix (not strictly needed for exec, but keeps things clean)
-    std::string path = std::string(tmpl) + ".sh";
-    rename(tmpl, path.c_str());
-    fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0700);
-    if (fd < 0) throw std::runtime_error(std::string("open script: ") + strerror(errno));
-    if (write(fd, content.data(), content.size()) < 0) {
+
+    // mkstemp creates the file 0600; add the execute bits so execve works.
+    if (fchmod(fd, S_IRWXU) != 0) {
+        int e = errno;
         close(fd);
-        throw std::runtime_error("write script");
+        unlink(tmpl);
+        throw std::runtime_error(std::string("fchmod: ") + strerror(e));
+    }
+
+    const char* p = content.data();
+    size_t remaining = content.size();
+    while (remaining > 0) {
+        ssize_t n = write(fd, p, remaining);
+        if (n < 0) {
+            if (errno == EINTR) continue;
+            close(fd);
+            unlink(tmpl);
+            throw std::runtime_error("write script");
+        }
+        p += n;
+        remaining -= static_cast<size_t>(n);
     }
     close(fd);
-    return path;
+    return std::string(tmpl);
 }
 
 static void read_until_closed(int fd, std::string& out) {
@@ -107,7 +121,8 @@ std::pair<std::string, double> run_block(
     // Parent
     close(out_pipe[1]);
     close(err_pipe[1]);
-    unlink(script_path.c_str());
+    // NOTE: do not unlink the script here — the child may not have execve'd it
+    // yet, which would cause ENOENT. We delete it after the child exits.
 
     // Read stdout and stderr with timeout using poll
     std::string stdout_data, stderr_data;
@@ -124,6 +139,7 @@ std::pair<std::string, double> run_block(
             waitpid(pid, nullptr, 0);
             close(out_pipe[0]);
             close(err_pipe[0]);
+            unlink(script_path.c_str()); // safe: child has been reaped
             throw BlockFailure(block, "timeout:pass",
                                std::vector<std::string>(pass_outputs),
                                stderr_data);
@@ -166,6 +182,7 @@ std::pair<std::string, double> run_block(
 
     int status = 0;
     waitpid(pid, &status, 0);
+    unlink(script_path.c_str()); // safe: child has exited
 
     double elapsed = std::chrono::duration<double>(
         std::chrono::steady_clock::now() - start).count();

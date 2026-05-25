@@ -71,10 +71,10 @@ std::pair<std::string, bool> process_file(
     std::string result = content;
 
     try {
-        // Backup before any mutation
-        if (base_cfg.backup) {
-            fs::path bdir = file_cfg.backup_dir;
-            snapshot_file(path, bdir, run_id);
+        // Backup before any mutation. The global backup setting is a master
+        // switch; a file-level pragma (file_cfg.backup) can additionally opt out.
+        if (base_cfg.backup && file_cfg.backup) {
+            snapshot_file(path, file_cfg.backup_dir, run_id);
         }
 
         auto [final_content, failed] = process_content(content, file_cfg, scope, run_ctx);
