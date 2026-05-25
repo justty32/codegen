@@ -202,6 +202,7 @@ std::pair<std::string, double> run_block(
 #else
 // ---- Windows implementation using CreateProcess ----
 
+#include <algorithm>
 #include <chrono>
 #include <future>
 #include <sstream>
@@ -263,8 +264,13 @@ static std::string shebang_to_win_cmd(const std::string& shebang) {
 }
 
 // Map interpreter name to a suitable temp file extension.
+// interp may be a bare name ("python3") or a full path ("C:\\Py\\python.exe"),
+// so reduce to the basename before matching.
 static std::string interp_to_ext(const std::string& interp) {
     std::string n = interp;
+    for (char& c : n) if (c == '\\') c = '/';
+    auto slash = n.rfind('/');
+    if (slash != std::string::npos) n = n.substr(slash + 1);
     if (ends_with(n, ".exe")) n = n.substr(0, n.size() - 4);
     if (starts_with(n, "python")) return ".py";
     if (n == "bash" || n == "sh" || n == "zsh" || n == "ksh") return ".sh";
