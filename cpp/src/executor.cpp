@@ -190,30 +190,59 @@ std::pair<std::string, double> run_block(
 #include <sstream>
 #include <windows.h>
 
-// Parse shebang line and return the interpreter basename (e.g. "python3", "bash").
-static std::string shebang_to_interp(const std::string& shebang) {
+#include "path_mapper.hpp"
+
+// Return the cached PathMapper (loaded from CODEGEN_PATH_MAP once at startup).
+static const PathMapper& get_path_mapper() {
+    static PathMapper m = PathMapper::load();
+    return m;
+}
+
+// Resolve a shebang line to a Windows-executable string.
+//
+// Resolution order:
+//   1. "/usr/bin/env interpreter" → return "interpreter" (search PATH, no map)
+//   2. "/absolute/path/interpreter" → try PathMapper; fall back to basename
+//   3. "interpreter" (no slash) → return as-is (search PATH)
+static std::string shebang_to_win_cmd(const std::string& shebang) {
     std::string line = lstrip(shebang);
     if (starts_with(line, "#!")) line = lstrip(line.substr(2));
-    if (line.empty()) return "python3";
+    if (line.empty()) return "python";
+
     std::istringstream ss(line);
     std::string cmd;
     ss >> cmd;
 
-    // take basename (handle both / and \)
-    auto take_base = [](std::string s) {
+    // Normalise slashes for basename extraction
+    auto normalise = [](std::string s) -> std::string {
         for (char& c : s) if (c == '\\') c = '/';
-        auto p = s.rfind('/');
-        return (p != std::string::npos) ? s.substr(p + 1) : s;
+        return s;
     };
-    std::string base = take_base(cmd);
+    std::string ncmd = normalise(cmd);
+    auto slash_pos = ncmd.rfind('/');
+    std::string basename = (slash_pos != std::string::npos)
+                               ? ncmd.substr(slash_pos + 1)
+                               : ncmd;
 
-    // /usr/bin/env python3 → "python3"
-    if (base == "env" || base == "env.exe") {
+    // Case 1: /…/env  → treat next token as interpreter name (search PATH)
+    if (basename == "env" || basename == "env.exe") {
         std::string next;
-        if (ss >> next) return take_base(next);
-        return "python3";
+        if (ss >> next) {
+            // `next` is a plain name like "python3"; no mapping applied
+            return normalise(next);
+        }
+        return "python";
     }
-    return base;
+
+    // Case 2: absolute POSIX path → try PathMapper
+    if (!cmd.empty() && cmd[0] == '/') {
+        std::string mapped = get_path_mapper().map(cmd);
+        if (!mapped.empty()) return mapped;
+        // PathMapper had no entry: fall back to basename so it is found via PATH
+    }
+
+    // Case 3 (and fallback from case 2): bare name or basename
+    return basename;
 }
 
 // Map interpreter name to a suitable temp file extension.
@@ -276,7 +305,7 @@ std::pair<std::string, double> run_block(
     std::vector<std::string>& pass_outputs)
 {
     std::string shebang = block.shebang.empty() ? "#!/usr/bin/env python3" : block.shebang;
-    std::string interp  = shebang_to_interp(shebang);
+    std::string interp  = shebang_to_win_cmd(shebang);
     std::string ext     = interp_to_ext(interp);
 
     std::string script_path;
