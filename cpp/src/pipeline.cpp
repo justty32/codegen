@@ -11,7 +11,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
-static fs::path write_tmp(const std::string& content) {
+static fs::path write_tmp(const std::string& content, bool /*world_readable*/ = false) {
     char dir[MAX_PATH], tmp[MAX_PATH];
     GetTempPathA(MAX_PATH, dir);
     GetTempFileNameA(dir, "cg", 0, tmp);
@@ -19,11 +19,15 @@ static fs::path write_tmp(const std::string& content) {
     return tmp;
 }
 #else
+#include <sys/stat.h>
 #include <unistd.h>
-static fs::path write_tmp(const std::string& content) {
+// world_readable: a dropped-privilege block (run_as_user) reads the origin-file
+// snapshot via CODEGEN_ORIGIN_FILE; the 0600 default would otherwise deny it.
+static fs::path write_tmp(const std::string& content, bool world_readable = false) {
     char tmpl[] = "/tmp/codegen_origin_XXXXXX";
     int fd = mkstemp(tmpl);
     if (fd < 0) throw std::runtime_error("mkstemp failed");
+    if (world_readable) fchmod(fd, 0644);
     if (write(fd, content.data(), content.size()) < 0) {
         close(fd);
         throw std::runtime_error("write tmp failed");
@@ -55,8 +59,9 @@ std::pair<std::string, bool> process_file(
         : merge_from_strings(base_cfg, file_pragma, /*is_pragma=*/true);
 
     // Write CODEGEN_ORIGIN_FILE snapshot
-    fs::path origin_file  = write_tmp(content);
-    fs::path origin_block = write_tmp(""); // placeholder; overridden per-block inside expander
+    const bool world = file_cfg.run_as_user.has_value();
+    fs::path origin_file  = write_tmp(content, world);
+    fs::path origin_block = write_tmp("", world); // placeholder; overridden per-block inside expander
 
     RunContext run_ctx{
         invoke_cwd,
@@ -112,7 +117,7 @@ int run_all(const std::vector<fs::path>& targets,
              bool dry_run,
              RunState* state)
 {
-    ScopeStore scope = ScopeStore::create();
+    ScopeStore scope = ScopeStore::create(cfg.run_as_user.has_value());
     fs::path invoke_cwd = fs::current_path();
     bool had_any_failure = false;
 

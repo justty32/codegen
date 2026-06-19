@@ -66,6 +66,7 @@ static int cmd_run(
     const std::optional<std::string>& on_error,
     const std::optional<std::string>& cwd_str,
     const std::vector<std::string>& env_pairs,
+    const std::optional<std::string>& run_as_user,
     bool dry_run)
 {
     // Build CLI overrides as string map
@@ -83,6 +84,7 @@ static int cmd_run(
     if (max_pass_time)   cli_over["max_pass_time"]  = std::to_string(*max_pass_time);
     if (on_error)        cli_over["on_error"]       = *on_error;
     if (cwd_str)         cli_over["cwd"]            = *cwd_str;
+    if (run_as_user)     cli_over["run_as_user"]    = *run_as_user;
 
     // include/exclude are cumulative
     if (!include_globs.empty()) {
@@ -144,7 +146,16 @@ static int cmd_run(
     g_run_state = &state;
 
     std::string run_id = make_run_id();
-    int code = run_all(files, cfg, run_id, dry_run, &state);
+    int code;
+    try {
+        code = run_all(files, cfg, run_id, dry_run, &state);
+    } catch (const CodegenError& e) {
+        // e.g. a forbidden/invalid pragma discovered while expanding a block.
+        // Surface it cleanly instead of letting it abort the process.
+        std::cerr << "codegen: 設定錯誤 — " << e.what() << "\n";
+        g_run_state = nullptr;
+        return EXIT_STARTUP;
+    }
 
     if (code == EXIT_ABORT_ALL)
         report_interrupt(state, "abort_all");
@@ -234,6 +245,10 @@ int main(int argc, char* argv[]) {
     std::vector<std::string> env_pairs;
     run_cmd->add_option("--env", env_pairs, "Inject env var KEY=VAL (repeatable)");
 
+    std::optional<std::string> run_as_user_val;
+    run_cmd->add_option("--run-as-user", run_as_user_val,
+                        "Drop privilege: run blocks as this user (name or uid). Requires root.");
+
     bool dry_run = false;
     run_cmd->add_flag("--dry-run", dry_run, "Print processed content; don't write to disk");
 
@@ -290,5 +305,6 @@ int main(int argc, char* argv[]) {
                    oe,
                    cwd_str,
                    env_pairs,
+                   run_as_user_val,
                    dry_run);
 }

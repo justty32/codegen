@@ -31,6 +31,7 @@ struct Config {
 
     std::optional<fs::path>            cwd{};
     std::map<std::string, std::string> extra_env{};
+    std::optional<std::string>         run_as_user{};
 
     void validate() const;
 };
