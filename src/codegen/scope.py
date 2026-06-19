@@ -8,14 +8,24 @@ from pathlib import Path
 class ScopeStore:
     """Manages three JSON files for §4.1 scope dicts and §10.5 snapshot/restore."""
 
-    def __init__(self, tmpdir: Path) -> None:
+    def __init__(self, tmpdir: Path, *, world_accessible: bool = False) -> None:
         self._tmpdir = tmpdir
+        self._world = world_accessible
         self._global_path = tmpdir / "global.json"
         self._file_path: Path | None = None
         self._block_path: Path | None = None
         self._snapshots: list[tuple[bytes, bytes, bytes]] = []
 
         self._global_path.write_text("{}", encoding="utf-8")
+        self._publish(self._global_path)
+
+    def _publish(self, path: Path) -> None:
+        """Make *path* read/writable by a dropped-privilege block (run_as_user)."""
+        if self._world:
+            try:
+                path.chmod(0o666)
+            except OSError:
+                pass
 
     @property
     def global_path(self) -> Path:
@@ -34,11 +44,13 @@ class ScopeStore:
     def open_file(self) -> Path:
         self._file_path = self._tmpdir / "file.json"
         self._file_path.write_text("{}", encoding="utf-8")
+        self._publish(self._file_path)
         return self._file_path
 
     def open_block(self) -> Path:
         self._block_path = self._tmpdir / "block.json"
         self._block_path.write_text("{}", encoding="utf-8")
+        self._publish(self._block_path)
         return self._block_path
 
     def close_block(self) -> None:
@@ -74,9 +86,16 @@ class ScopeStore:
             self._block_path.write_bytes(b)
 
     @classmethod
-    def create(cls) -> "ScopeStore":
+    def create(cls, *, world_accessible: bool = False) -> "ScopeStore":
         tmpdir = Path(tempfile.mkdtemp(prefix="codegen_scope_"))
-        return cls(tmpdir)
+        if world_accessible:
+            # mkdtemp is 0700; a dropped-privilege block must be able to traverse
+            # the dir to reach the scope JSON files it reads/writes.
+            try:
+                tmpdir.chmod(0o777)
+            except OSError:
+                pass
+        return cls(tmpdir, world_accessible=world_accessible)
 
     def cleanup(self) -> None:
         import shutil

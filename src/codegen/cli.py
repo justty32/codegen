@@ -71,6 +71,12 @@ def _add_run_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--on-error", choices=["continue", "abort_file", "abort_all"], dest="on_error")
     p.add_argument("--strict", action="store_const", const="abort_all", dest="on_error")
     p.add_argument("--cwd", type=Path, dest="cwd")
+    p.add_argument(
+        "--run-as-user",
+        dest="run_as_user",
+        metavar="USER",
+        help="Drop privilege: run codegen blocks as this user (name or uid). Requires root.",
+    )
     p.add_argument("--env", action="append", dest="env_pairs", default=[], metavar="KEY=VAL")
     p.add_argument("--dry-run", action="store_true", dest="dry_run")
 
@@ -105,6 +111,8 @@ def _cli_overrides(args: argparse.Namespace) -> dict:
         overrides["on_error"] = args.on_error
     if getattr(args, "cwd", None):
         overrides["cwd"] = args.cwd
+    if getattr(args, "run_as_user", None):
+        overrides["run_as_user"] = args.run_as_user
     if getattr(args, "env_pairs", []):
         env_dict = {}
         for pair in args.env_pairs:

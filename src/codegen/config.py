@@ -16,7 +16,9 @@ SCAN_ONLY_FIELDS = frozenset(
     {"extensions", "include", "exclude", "scan_all", "comment_syntax_overrides"}
 )
 # Fields that may NOT appear in any pragma (file or per-block).
-PRAGMA_FORBIDDEN_FIELDS = SCAN_ONLY_FIELDS | frozenset({"extra_env"})
+# run_as_user is security-sensitive (privilege selection) and must never be
+# settable from within a processed file.
+PRAGMA_FORBIDDEN_FIELDS = SCAN_ONLY_FIELDS | frozenset({"extra_env", "run_as_user"})
 
 
 @dataclass(frozen=True)
@@ -44,6 +46,7 @@ class Config:
 
     cwd: Path | None = None
     extra_env: Mapping[str, str] = field(default_factory=dict)
+    run_as_user: str | None = None
 
     def __post_init__(self) -> None:
         if len(self.markers) != 2 or not all(self.markers):
@@ -152,6 +155,11 @@ def _coerce_field(name: str, value: Any) -> Any:
         return _coerce_path(name, value)
     if name == "extra_env":
         return _coerce_str_mapping(name, value)
+    if name == "run_as_user":
+        if value is None:
+            return None
+        v = str(value).strip()
+        return v or None
     raise ConfigError(f"unknown setting: {name}")
 
 

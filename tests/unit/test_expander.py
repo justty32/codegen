@@ -173,7 +173,7 @@ def test_scope_committed_on_success(tmp_path):
 
     ctx = _make_ctx(tmp_path)
 
-    def fake_run(block, *, env, cwd, max_pass_time, pass_outputs):
+    def fake_run(block, *, env, cwd, max_pass_time, pass_outputs, run_as_user=None):
         import json as _json
         data = _json.loads(scope.file_path.read_text())
         data["after"] = 2
@@ -206,7 +206,7 @@ def test_multi_pass_expansion(tmp_path):
 
     call_count = [0]
 
-    def fake_run(b, *, env, cwd, max_pass_time, pass_outputs):
+    def fake_run(b, *, env, cwd, max_pass_time, pass_outputs, run_as_user=None):
         call_count[0] += 1
         if call_count[0] == 1:
             return nested_output, 0.1  # first call: produces a nested block
@@ -230,7 +230,7 @@ def test_multi_pass_stable_after_one(tmp_path):
 
     call_count = [0]
 
-    def fake_run(b, *, env, cwd, max_pass_time, pass_outputs):
+    def fake_run(b, *, env, cwd, max_pass_time, pass_outputs, run_as_user=None):
         call_count[0] += 1
         return "plain output\n", 0.1
 
@@ -253,7 +253,7 @@ def test_max_total_time_exceeded(tmp_path):
         "/* CODEGEN_START\n#!/usr/bin/env python3\npass\nCODEGEN_END */\n"
     )
 
-    def fake_run(b, *, env, cwd, max_pass_time, pass_outputs):
+    def fake_run(b, *, env, cwd, max_pass_time, pass_outputs, run_as_user=None):
         return nested_output, 0.3  # each pass takes 0.3s → 2nd hits max_total_time
 
     with patch("codegen.expander._run_block", side_effect=fake_run):
@@ -279,7 +279,7 @@ def test_process_content_continue_on_error(tmp_path):
 
     call_count = [0]
 
-    def fake_run(b, *, env, cwd, max_pass_time, pass_outputs):
+    def fake_run(b, *, env, cwd, max_pass_time, pass_outputs, run_as_user=None):
         call_count[0] += 1
         if call_count[0] == 1:
             raise BlockFailure(block=b, reason="exit:1")
@@ -378,7 +378,7 @@ def test_process_content_first_block_no_trailing_newline(tmp_path):
 
     outputs = iter(["AAA", "BBB\n"])  # first has no trailing newline
 
-    def fake_run(b, *, env, cwd, max_pass_time, pass_outputs):
+    def fake_run(b, *, env, cwd, max_pass_time, pass_outputs, run_as_user=None):
         return next(outputs), 0.1
 
     with patch("codegen.expander._run_block", side_effect=fake_run):

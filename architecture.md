@@ -90,6 +90,7 @@ class Config:
     # subprocess 環境（§4.4）
     cwd: Path
     extra_env: Mapping[str, str]
+    run_as_user: str | None              # 降權執行身份（名稱/uid）；pragma-forbidden
 
 
 # parser.py
@@ -136,7 +137,7 @@ class CodegenError(Exception): ...
 class ConfigError(CodegenError): ...
 class BlockFailure(CodegenError):
     block: Block
-    reason: str                          # "exit:1" | "timeout:pass" | "timeout:total" | "io" | ...
+    reason: str                          # "exit:1" | "timeout:pass" | "timeout:total" | "io" | "user:unknown:X" | "user:denied:X" | ...
     passes_stdout: list[str]
     last_stderr: str
 
@@ -307,11 +308,15 @@ def run_block(block: Block, cfg: Config, scope: ScopeStore, file_path: Path) -> 
 
 1. 把 `block.inner_text`（不含 marker 殼）寫到暫存檔，加 `chmod +x`
    - 若 `block.shebang is None` → 在第一行補 `#!/usr/bin/env python3` 後再寫入
+   - 若設了 `run_as_user` → 暫存檔改 `0o755`，讓降權後的使用者讀得到
 2. 用 `env.build_env(...)` 組環境變數
-3. `subprocess.Popen([tmp_path], cwd=cfg.cwd, env=...)`，計時並設 `timeout=cfg.max_pass_time`
-4. 收 stdout 全文（保留結尾換行，§2）；stderr buffer 起來但不轉發
-5. 若退出碼 0 → 回 `(stdout, elapsed)`
-6. 若失敗 → 拋 `BlockFailure(block, reason, ...)`，由 §10.4 統一在頂層印 stderr
+3. `subprocess.Popen([tmp_path], cwd=cfg.cwd, env=..., start_new_session=True)`
+   - `start_new_session=True` 讓 block 自成 process group
+   - 設 `run_as_user` 時，解析成 uid/gid/supplementary groups 傳給 `user=`/`group=`/`extra_groups=`（需 root；解析不到 → `user:unknown`，權限不足 → `user:denied`）
+4. `proc.communicate(timeout=cfg.max_pass_time)` 計時；逾時 → `os.killpg(SIGKILL)` 整個 process group（連 block 自己背景化的子進程一起收掉），再 reap
+5. 收 stdout 全文（保留結尾換行，§2）；stderr buffer 起來但不轉發
+6. 若退出碼 0 → 回 `(stdout, elapsed)`
+7. 若失敗 → 拋 `BlockFailure(block, reason, ...)`，由 §10.4 統一在頂層印 stderr
 
 stderr 在成功時直接丟棄；失敗時保留給 §10.4 印出。
 
@@ -332,6 +337,10 @@ def build_env(block: Block, cfg: Config, scope: ScopeStore, ctx: RunContext) -> 
 - `CODEGEN_ORIGIN_BLOCK` ← 該 block 原文快照路徑（§4.2）
   - 對展開出來的子 block：指向「該子 block 在父 block 該輪 stdout 中的原樣內容」的暫存檔；expander 在每次找到 inner_blocks 時就為各個 inner block 各自寫一份快照
 - `CODEGEN_INVOKE_CWD` / `CODEGEN_TARGETS` / `CODEGEN_FILE_PATH`（§4.3）
+
+> **`run_as_user` 的檔案權限**：降權後 block 由另一個 uid 執行，因此它要存取的
+> scope JSON（讀寫，`0o666`，所在暫存目錄 `0o777`）與 origin 快照（唯讀，`0o644`）
+> 都會在建立時放寬權限。預設（未設 `run_as_user`）一律維持 `0o600`/`0o700` 不變。
 
 ## 10. Scope（`scope.py`）
 

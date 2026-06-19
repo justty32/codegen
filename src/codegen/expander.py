@@ -29,12 +29,19 @@ def _splice(region: str, block: Block, replacement: str) -> str:
     return "".join(before) + replacement + "".join(after)
 
 
-def _write_tmp(content: str) -> Path:
+def _write_tmp(content: str, *, world_readable: bool = False) -> Path:
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".txt", delete=False, encoding="utf-8"
     ) as f:
         f.write(content)
-        return Path(f.name)
+        path = Path(f.name)
+    if world_readable:
+        # A dropped-privilege block (run_as_user) reads this via CODEGEN_ORIGIN_BLOCK.
+        try:
+            path.chmod(0o644)
+        except OSError:
+            pass
+    return path
 
 
 def _keep_as_comment(original_raw: str, block: Block, output: str) -> str:
@@ -77,7 +84,9 @@ def expand_block(
     snapshot_finalized = False
 
     # Create origin_block snapshot (§4.2)
-    origin_block_path = _write_tmp(block.inner_text)
+    origin_block_path = _write_tmp(
+        block.inner_text, world_readable=block_cfg.run_as_user is not None
+    )
 
     try:
         # region starts as the full raw block text (including markers).
@@ -100,7 +109,9 @@ def expand_block(
 
             for ib in inner_blocks:
                 # For nested sub-blocks, origin_block is the sub-block's inner text
-                ib_origin = _write_tmp(ib.inner_text)
+                ib_origin = _write_tmp(
+                    ib.inner_text, world_readable=block_cfg.run_as_user is not None
+                )
                 ib_env = build_env(
                     block_cfg.extra_env,
                     scope,
@@ -120,6 +131,7 @@ def expand_block(
                     cwd=cwd,
                     max_pass_time=block_cfg.max_pass_time,
                     pass_outputs=pass_outputs,
+                    run_as_user=block_cfg.run_as_user,
                 )
                 try:
                     ib_origin.unlink()

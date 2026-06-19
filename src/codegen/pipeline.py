@@ -58,6 +58,15 @@ def process_file(
         f.write("")
         origin_block_path = Path(f.name)
 
+    # When running blocks as another user, the read-only origin snapshots they
+    # consume (CODEGEN_ORIGIN_FILE/BLOCK) must be readable by that user.
+    if file_cfg.run_as_user is not None:
+        for p in (origin_file_path, origin_block_path):
+            try:
+                p.chmod(0o644)
+            except OSError:
+                pass
+
     run_ctx = RunContext(
         invoke_cwd=ctx.invoke_cwd,
         targets=ctx.targets,
@@ -109,7 +118,7 @@ def run_all(
     """Process all files.  Returns exit code."""
     from codegen.errors import EXIT_ABORT_ALL
 
-    scope = ScopeStore.create()
+    scope = ScopeStore.create(world_accessible=cfg.run_as_user is not None)
     backup_dir = (cfg.backup_dir if cfg.backup else None)
     had_any_failure = False
     invoke_cwd = Path.cwd()
