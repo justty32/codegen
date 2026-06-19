@@ -15,14 +15,17 @@
 static const std::set<std::string> SCAN_ONLY_FIELDS = {
     "extensions", "include", "exclude", "scan_all", "comment_syntax_overrides"
 };
+// run_as_user is security-sensitive (privilege selection) and must never be
+// settable from within a processed file.
 static const std::set<std::string> PRAGMA_FORBIDDEN = {
-    "extensions", "include", "exclude", "scan_all", "comment_syntax_overrides", "extra_env"
+    "extensions", "include", "exclude", "scan_all", "comment_syntax_overrides",
+    "extra_env", "run_as_user"
 };
 static const std::set<std::string> ALL_FIELDS = {
     "extensions", "include", "exclude", "scan_all", "comment_syntax_overrides",
     "markers", "max_passes", "max_total_time", "max_pass_time",
     "keep_as_comment", "auto_indent", "backup", "backup_dir",
-    "on_error", "cwd", "extra_env"
+    "on_error", "cwd", "extra_env", "run_as_user"
 };
 
 void Config::validate() const {
@@ -81,6 +84,11 @@ static void apply_one(Config& cfg, const std::string& key, const std::string& va
         cfg.on_error = val;
     }
     else if (key == "cwd")                 cfg.cwd = fs::path(val);
+    else if (key == "run_as_user") {
+        std::string v = strip(val);
+        if (v.empty()) cfg.run_as_user = std::nullopt;
+        else           cfg.run_as_user = v;
+    }
     else
         throw ConfigError("unknown setting: " + key);
 }
@@ -148,6 +156,12 @@ static void apply_toml_node(Config& cfg, const std::string& key, const toml::nod
         }
     } else if (key == "cwd") {
         if (auto* sv = node.as_string()) cfg.cwd = fs::path(sv->get());
+    } else if (key == "run_as_user") {
+        if (auto* sv = node.as_string()) {
+            std::string v = strip(sv->get());
+            if (v.empty()) cfg.run_as_user = std::nullopt;
+            else           cfg.run_as_user = v;
+        }
     }
 }
 

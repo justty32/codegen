@@ -9,7 +9,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
-static fs::path write_tmp_file(const std::string& content) {
+static fs::path write_tmp_file(const std::string& content, bool /*world_readable*/ = false) {
     char tmp[MAX_PATH];
     char dir[MAX_PATH];
     GetTempPathA(MAX_PATH, dir);
@@ -18,11 +18,15 @@ static fs::path write_tmp_file(const std::string& content) {
     return tmp;
 }
 #else
+#include <sys/stat.h>
 #include <unistd.h>
-static fs::path write_tmp_file(const std::string& content) {
+// world_readable: a dropped-privilege block (run_as_user) reads these via
+// CODEGEN_ORIGIN_* and would otherwise be denied by the 0600 default.
+static fs::path write_tmp_file(const std::string& content, bool world_readable = false) {
     char tmpl[] = "/tmp/codegen_tmp_XXXXXX";
     int fd = mkstemp(tmpl);
     if (fd < 0) throw std::runtime_error("mkstemp failed");
+    if (world_readable) fchmod(fd, 0644);
     if (write(fd, content.data(), content.size()) < 0) {
         close(fd);
         throw std::runtime_error("write tmp failed");
@@ -80,7 +84,8 @@ std::string expand_block(
     scope.snapshot();
     bool snapshot_done = false;
 
-    fs::path origin_block_path = write_tmp_file(block.inner_text);
+    const bool world = block_cfg.run_as_user.has_value();
+    fs::path origin_block_path = write_tmp_file(block.inner_text, world);
 
     try {
         std::string region = block.raw_block_text;
@@ -98,7 +103,7 @@ std::string expand_block(
             if (inner_blocks.empty()) break; // stable
 
             for (auto& ib : inner_blocks) {
-                fs::path ib_origin = write_tmp_file(ib.inner_text);
+                fs::path ib_origin = write_tmp_file(ib.inner_text, world);
 
                 RunContext ib_ctx{
                     ctx.invoke_cwd,
@@ -114,7 +119,8 @@ std::string expand_block(
                 auto [stdout_str, elapsed] = run_block(
                     ib, ib_env, eff_cwd,
                     block_cfg.max_pass_time,
-                    pass_outputs);
+                    pass_outputs,
+                    block_cfg.run_as_user);
 
                 std::error_code ec;
                 fs::remove(ib_origin, ec);

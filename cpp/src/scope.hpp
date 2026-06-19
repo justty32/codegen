@@ -8,8 +8,8 @@ namespace fs = std::filesystem;
 // Manages three JSON files for §4.1 scope dicts and §10.5 snapshot/restore.
 class ScopeStore {
 public:
-    static ScopeStore create();
-    explicit ScopeStore(fs::path tmpdir);
+    static ScopeStore create(bool world_accessible = false);
+    explicit ScopeStore(fs::path tmpdir, bool world_accessible = false);
     ~ScopeStore();
 
     ScopeStore(const ScopeStore&) = delete;
@@ -32,7 +32,10 @@ public:
     void cleanup();
 
 private:
+    void publish(const fs::path& path) const;  // chmod 0666 when world-accessible
+
     fs::path _tmpdir;
+    bool     _world{false};
     fs::path _global_path;
     fs::path _file_path;
     fs::path _block_path;

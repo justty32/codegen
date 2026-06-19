@@ -1,25 +1,74 @@
+// Privilege-drop (setgroups/getgrouplist) and setsid are glibc/BSD extensions
+// that the project-wide _POSIX_C_SOURCE would otherwise hide.  Enable the full
+// feature set for this translation unit before any system header is pulled in.
+#ifndef _WIN32
+#define _GNU_SOURCE 1
+#endif
+
 #include "executor.hpp"
 #include "utils.hpp"
 
 #ifndef _WIN32
 
+#include <algorithm>
 #include <cerrno>
 #include <chrono>
 #include <cstring>
 #include <ctime>
 
 #include <fcntl.h>
+#include <grp.h>
 #include <poll.h>
+#include <pwd.h>
 #include <signal.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 static const char* FALLBACK_SHEBANG = "#!/usr/bin/env python3";
 
+// Resolved identity for run_as_user.
+struct ResolvedUser {
+    uid_t uid;
+    gid_t gid;
+    std::vector<gid_t> groups;  // supplementary groups (incl. primary)
+};
+
+// Resolve a username or numeric uid string to its identity.
+// Returns false when the user does not exist.
+static bool resolve_user(const std::string& spec, ResolvedUser& out) {
+    struct passwd* pw = nullptr;
+    bool all_digits = !spec.empty() &&
+        std::all_of(spec.begin(), spec.end(),
+                    [](unsigned char c) { return std::isdigit(c) != 0; });
+    if (all_digits)
+        pw = getpwuid(static_cast<uid_t>(std::stoul(spec)));
+    else
+        pw = getpwnam(spec.c_str());
+    if (!pw) return false;
+
+    out.uid = pw->pw_uid;
+    out.gid = pw->pw_gid;
+
+    int ngroups = 32;
+    std::vector<gid_t> groups(static_cast<size_t>(ngroups));
+    if (getgrouplist(pw->pw_name, pw->pw_gid, groups.data(), &ngroups) < 0) {
+        // groups buffer too small; ngroups now holds the required size.
+        groups.resize(static_cast<size_t>(ngroups));
+        getgrouplist(pw->pw_name, pw->pw_gid, groups.data(), &ngroups);
+    }
+    groups.resize(static_cast<size_t>(ngroups));
+    out.groups = std::move(groups);
+    return true;
+}
+
 // Write script to a temp file, make it executable, return the path.
 // execve relies on the shebang line, so the file MUST have the execute bit set.
-static std::string write_script(const std::string& shebang, const std::string& body) {
+// When world_accessible is set, a dropped-privilege child (a *different* user)
+// must additionally be able to read+exec it, so use 0755 instead of 0700.
+static std::string write_script(const std::string& shebang, const std::string& body,
+                                bool world_accessible) {
     std::string content = (shebang.empty() ? FALLBACK_SHEBANG : shebang) + "\n" + body;
 
     char tmpl[] = "/tmp/codegen_XXXXXX";
@@ -27,7 +76,8 @@ static std::string write_script(const std::string& shebang, const std::string& b
     if (fd < 0) throw std::runtime_error(std::string("mkstemp: ") + strerror(errno));
 
     // mkstemp creates the file 0600; add the execute bits so execve works.
-    if (fchmod(fd, S_IRWXU) != 0) {
+    mode_t mode = world_accessible ? mode_t(0755) : S_IRWXU;
+    if (fchmod(fd, mode) != 0) {
         int e = errno;
         close(fd);
         unlink(tmpl);
@@ -58,16 +108,35 @@ static void read_until_closed(int fd, std::string& out) {
         out.append(buf, static_cast<size_t>(n));
 }
 
+// SIGKILL the whole process group led by *pid*.  The child calls setsid(), so
+// it leads its own group (pgid == pid); killing the group reaps any background
+// children the script spawned which a plain kill(pid) would orphan.
+static void kill_process_group(pid_t pid) {
+    kill(-pid, SIGKILL);  // whole group
+    kill(pid, SIGKILL);   // fallback: direct child, in case setsid hasn't run
+}
+
 std::pair<std::string, double> run_block(
     const Block& block,
     const std::map<std::string, std::string>& env,
     const fs::path& cwd,
     double max_pass_time,
-    std::vector<std::string>& pass_outputs)
+    std::vector<std::string>& pass_outputs,
+    const std::optional<std::string>& run_as_user)
 {
+    const bool drop = run_as_user.has_value();
+
+    // Resolve the target identity up front so an unknown user fails cleanly,
+    // before we fork or write any temp files.
+    ResolvedUser ruser{};
+    if (drop) {
+        if (!resolve_user(*run_as_user, ruser))
+            throw BlockFailure(block, "user:unknown:" + *run_as_user, pass_outputs);
+    }
+
     std::string script_path;
     try {
-        script_path = write_script(block.shebang, block.body);
+        script_path = write_script(block.shebang, block.body, /*world_accessible=*/drop);
     } catch (const std::exception& e) {
         throw BlockFailure(block, std::string("io:") + e.what(), pass_outputs);
     }
@@ -83,12 +152,16 @@ std::pair<std::string, double> run_block(
         envp.push_back(const_cast<char*>(s.c_str()));
     envp.push_back(nullptr);
 
-    // Pipes for stdout and stderr
-    int out_pipe[2], err_pipe[2];
-    if (pipe(out_pipe) || pipe(err_pipe)) {
+    // Pipes for stdout and stderr, plus a CLOEXEC "exec error report" pipe the
+    // child uses to signal a privilege-drop failure: on success exec closes the
+    // write end (CLOEXEC) and the parent reads EOF; on failure the child writes
+    // one byte before _exit, and the parent maps it to user:denied.
+    int out_pipe[2], err_pipe[2], rpt_pipe[2];
+    if (pipe(out_pipe) || pipe(err_pipe) || pipe(rpt_pipe)) {
         unlink(script_path.c_str());
         throw BlockFailure(block, std::string("io:pipe: ") + strerror(errno), pass_outputs);
     }
+    fcntl(rpt_pipe[1], F_SETFD, fcntl(rpt_pipe[1], F_GETFD) | FD_CLOEXEC);
 
     auto start = std::chrono::steady_clock::now();
 
@@ -102,14 +175,32 @@ std::pair<std::string, double> run_block(
         // Child
         close(out_pipe[0]);
         close(err_pipe[0]);
+        close(rpt_pipe[0]);
         dup2(out_pipe[1], STDOUT_FILENO);
         dup2(err_pipe[1], STDERR_FILENO);
         close(out_pipe[1]);
         close(err_pipe[1]);
 
+        // Lead our own session/process group so a timeout can SIGKILL the
+        // whole tree, not just this process.
+        setsid();
+
         if (!cwd.empty()) {
             if (chdir(cwd.c_str()) != 0) _exit(127);
         }
+
+        // Drop privilege (must precede execve, order: groups -> gid -> uid).
+        if (drop) {
+            if (setgroups(ruser.groups.size(), ruser.groups.data()) != 0 ||
+                setgid(ruser.gid) != 0 ||
+                setuid(ruser.uid) != 0) {
+                char c = 'U';
+                ssize_t w = write(rpt_pipe[1], &c, 1);
+                (void)w;
+                _exit(126);
+            }
+        }
+        close(rpt_pipe[1]);  // belt-and-suspenders; CLOEXEC also closes on exec
 
         const char* argv[] = {script_path.c_str(), nullptr};
         execve(script_path.c_str(),
@@ -121,8 +212,25 @@ std::pair<std::string, double> run_block(
     // Parent
     close(out_pipe[1]);
     close(err_pipe[1]);
+    close(rpt_pipe[1]);
     // NOTE: do not unlink the script here — the child may not have execve'd it
     // yet, which would cause ENOENT. We delete it after the child exits.
+
+    // Read the exec-error report. A single byte means privilege drop failed;
+    // EOF (read==0) means the child exec'd (or proceeded) successfully.
+    {
+        char c;
+        ssize_t r;
+        do { r = read(rpt_pipe[0], &c, 1); } while (r < 0 && errno == EINTR);
+        close(rpt_pipe[0]);
+        if (r == 1) {
+            waitpid(pid, nullptr, 0);
+            close(out_pipe[0]);
+            close(err_pipe[0]);
+            unlink(script_path.c_str());
+            throw BlockFailure(block, "user:denied:" + *run_as_user, pass_outputs);
+        }
+    }
 
     // Read stdout and stderr with timeout using poll
     std::string stdout_data, stderr_data;
@@ -135,7 +243,7 @@ std::pair<std::string, double> run_block(
     while (!out_done || !err_done) {
         auto now = std::chrono::steady_clock::now();
         if (now >= deadline) {
-            kill(pid, SIGTERM);
+            kill_process_group(pid);
             waitpid(pid, nullptr, 0);
             close(out_pipe[0]);
             close(err_pipe[0]);
@@ -207,7 +315,8 @@ std::pair<std::string, double> run_block(
     const std::map<std::string, std::string>&,
     const fs::path&,
     double,
-    std::vector<std::string>&)
+    std::vector<std::string>&,
+    const std::optional<std::string>&)
 {
     throw std::runtime_error("codegen: subprocess execution is not supported on Windows");
 }
