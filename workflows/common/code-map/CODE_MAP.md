@@ -2,7 +2,7 @@
 
 ← [common/README](../README.md)｜[INDEX](../../../INDEX.md)
 
-程式碼導航 index。codegen 有**兩份功能對齊的實作**，模組**一一對應**：Python 在 `src/codegen/`，C++ 在 `cpp/src/`。權威的模組職責與資料結構說明在 [docs/design/architecture.md](../../../docs/design/architecture.md)（§2 模組劃分、§3 資料結構），本檔是快速指路。
+程式碼導航 index。codegen 有**兩份功能對齊的實作**，模組**一一對應**：Python 在 `src/codegen/`，C++ 在 `cpp/src/`。權威的模組職責與資料結構說明在 [docs/design/architecture/](../../../docs/design/architecture/README.md)（§2 模組劃分見 README、§3 資料結構見 data-config.md），本檔是快速指路。
 
 **維護鏈**：碰了 `src/codegen/` 或 `cpp/src/`（新增/刪除/重命名模組、改變模組職責）→ 同一個 commit 內更新本檔。詳見 [common/conventions](../conventions.md)。
 
@@ -16,7 +16,7 @@
 | scanner | 目標展開 + extensions/include/exclude 過濾 | `scanner.py` | `scanner.{cpp,hpp}` |
 | parser | marker/pragma/shebang 切分，找 top-level block | `parser.py` | `parser.{cpp,hpp}` |
 | expander | 單一 block 的多輪展開（含嵌套）| `expander.py` | `expander.{cpp,hpp}` |
-| executor | 啟動 subprocess、組 env、timeout、收 stdout/stderr | `executor.py` | `executor.{cpp,hpp}` |
+| executor | 啟動 subprocess、組 env、timeout、收 stdout/stderr | `executor.py` | `executor.hpp` + `executor_posix.cpp` / `executor_win.cpp`（按平台拆檔）|
 | env | 組 subprocess 的 `CODEGEN_*` 環境變數 | `env.py` | `env.{cpp,hpp}` |
 | scope | 三層 scope dict 的 JSON 檔生命週期 + 快照/回滾 | `scope.py` | `scope.{cpp,hpp}` |
 | indent | `auto_indent` 計算與套用 | `indent.py` | `indent.{cpp,hpp}` |

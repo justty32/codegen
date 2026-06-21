@@ -10,4 +10,4 @@
 
 ## Open
 
-- _（目前無待辦）_
+- **Windows 上驗證 executor 拆檔**：`cpp/src/executor.cpp` 已按平台拆成 `executor_posix.cpp` / `executor_win.cpp`（純搬移、`#ifdef` 守衛）。Linux 端已 build + 跑 `demo.sh` 通過；Windows 半邊（`executor_win.cpp`）只有在 Windows 上 build 才會編到，需在 Windows 上 `cmake -S cpp -B cpp/build && cmake --build cpp/build` 並跑 example 確認行為不變。

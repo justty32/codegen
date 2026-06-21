@@ -17,7 +17,7 @@
 程式碼導航 index 在 [code-map/CODE_MAP.md](code-map/CODE_MAP.md)。
 
 **觸發**：碰了 `src/codegen/` 或 `cpp/src/`——新增/刪除/重命名模組、改變模組職責、調整模組對應關係。
-**動作**：在**同一個 commit**內更新 CODE_MAP（與必要時的 [architecture.md](../../docs/design/architecture.md) §2/§3）。
+**動作**：在**同一個 commit**內更新 CODE_MAP（與必要時的 [architecture/](../../docs/design/architecture/README.md) §2/§3）。
 **例外**：純函式內部實作微調、不影響模組職責的，不必動 CODE_MAP。
 
 feature-dev 流程裡，測試迭代期間 CODE_MAP/文檔可暫時落後，但 **commit 前必須對齊**。

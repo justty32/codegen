@@ -34,10 +34,10 @@
 | 路徑 | 內容 |
 |------|------|
 | [docs/intro.md](docs/intro.md) | 最簡上手（快速範例）|
-| [docs/for_agent.md](docs/for_agent.md) | 給 AI agent 的使用手冊（怎麼寫 block、怎麼跑 CLI）|
-| [docs/agent_skills.md](docs/agent_skills.md) | agent 技能：新增 block / 補全 stub block |
-| [docs/design/DESIGN.md](docs/design/DESIGN.md) | 設計文件（block 格式、執行模型、設定、回滾…）|
-| [docs/design/architecture.md](docs/design/architecture.md) | 架構文件（模組劃分、資料結構、執行流程；對應 DESIGN §X）|
+| [docs/for_agent/](docs/for_agent/README.md) | 給 AI agent 的使用手冊（怎麼寫 block、怎麼跑 CLI）|
+| [docs/agent_skills/](docs/agent_skills/README.md) | agent 技能：新增 block / 補全 stub block |
+| [docs/design/DESIGN/](docs/design/DESIGN/README.md) | 設計文件（block 格式、執行模型、設定、回滾…）|
+| [docs/design/architecture/](docs/design/architecture/README.md) | 架構文件（模組劃分、資料結構、執行流程；對應 DESIGN §X）|
 | [README.md](README.md) | 對外產品 README（安裝、CLI 參考、完整功能說明）|
 
 ## 活狀態（只列還沒完成的）

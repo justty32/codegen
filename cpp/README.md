@@ -5,7 +5,7 @@
 不需要安裝 Python runtime。
 
 > 工具本身的概念、block 語法、`codegen.toml` 設定項說明，請看專案根目錄的
-> [`README.md`](../README.md)、[`intro.md`](../docs/intro.md) 與 [`architecture.md`](../docs/design/architecture.md)。
+> [`README.md`](../README.md)、[`intro.md`](../docs/intro.md) 與 [`architecture/`](../docs/design/architecture/README.md)。
 > 本文件只說明 C++ 版特有的建置、使用與差異。
 
 ---
