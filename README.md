@@ -2,7 +2,9 @@
 
 跨語言的 in-source 程式碼生成工具。在原始檔中以特殊註解區塊定義生成腳本，執行後把腳本的 stdout 寫回檔案原位。
 
-**平台：POSIX only（Linux / macOS）。不支援 Windows。**
+**平台：本 Python 版為 POSIX only（Linux / macOS），不支援 Windows。** 另有一份功能對齊的
+C++ 重寫位於 [`cpp/`](cpp/)，產出單一原生執行檔、額外支援 Windows，以及超時整樹 kill、
+`--run-as-user` 降權等強化；建置與差異說明見 [`cpp/README.md`](cpp/README.md)。
 
 ---
 
