@@ -1,4 +1,4 @@
-← [docs/design](../) ｜ [INDEX](../../../INDEX.md)
+← [docs](../) ｜ [index](../../index.md)
 
 # codegen 設計文件
 
@@ -38,3 +38,7 @@ Subprocess stderr：成功時由工具吞掉，不轉發、不存檔；失敗時
 | §4 Block 執行環境、§5 輸出與保留原 source、§6 執行模型與嵌套 | [execution.md](execution.md) |
 | §7 備份、§8 回滾、§9 檔案掃描、§10 錯誤處理（10.1–10.6） | [scan-backup-error.md](scan-backup-error.md) |
 | §11 CLI 介面草案、§12 進度輸出與中斷處理、§13 仍待決定 / 之後再說 | [cli-progress.md](cli-progress.md) |
+
+## 相關
+
+- 實作面的分解（模組劃分、核心資料結構、執行流程、內部介面）見 [`architecture/`](architecture/README.md)，其 §X 章節編號與本設計文件對應。

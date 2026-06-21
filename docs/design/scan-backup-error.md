@@ -1,6 +1,6 @@
 # §7. 備份 ｜ §8. 回滾 ｜ §9. 檔案掃描 ｜ §10. 錯誤處理
 
-← [DESIGN/README](README.md)
+← [design/README](README.md)
 
 ## 7. 備份
 

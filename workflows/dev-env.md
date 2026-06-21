@@ -1,6 +1,6 @@
 # 開發環境（dev-env）— 工作流入口
 
-← [INDEX](../INDEX.md)｜[CLAUDE.md](../CLAUDE.md)
+← [index](../index.md)｜[CLAUDE.md](../CLAUDE.md)
 
 設定 / 了解開發環境，以及 fresh clone 後要做什麼。
 
@@ -30,7 +30,7 @@ cmake --build cpp/build      # 產物 cpp/build/codegen
 | Windows | ❌（須走 WSL）| ✅（C++ 版額外支援）|
 
 - Python 版依賴 POSIX（shebang / `chmod +x` / SIGINT），不支援原生 Windows。
-- **Claude 起不了原生 Windows 環境**：Windows 上的 C++ 版行為需使用者親驗 → [WAIT_USER](../WAIT_USER.md)。
+- **Claude 起不了原生 Windows 環境**：Windows 上的 C++ 版行為需使用者親驗 → [wait_user](../wait_user.md)。
 
 ## 相關
 

@@ -1,6 +1,6 @@
 # 測試（testing）— 工作流入口
 
-← [INDEX](../INDEX.md)｜[CLAUDE.md](../CLAUDE.md)
+← [index](../index.md)｜[CLAUDE.md](../CLAUDE.md)
 
 跑測試的權威指令與分類。鐵律：**改完程式碼就跑測試**（[CLAUDE.md](../CLAUDE.md)）。
 
@@ -29,4 +29,4 @@ cpp/examples/codegen_helper/demo.sh    # 跑 example 驗證行為
 ## 把關範圍
 
 - **Claude 自己跑**：Python pytest（必跑）、C++ build + example（碰 cpp 時）。
-- **交給使用者**：需特定平台/環境才能驗的（如 Windows 上的 C++ 行為）→ 記到 [WAIT_USER](../WAIT_USER.md)。
+- **交給使用者**：需特定平台/環境才能驗的（如 Windows 上的 C++ 行為）→ 記到 [wait_user](../wait_user.md)。

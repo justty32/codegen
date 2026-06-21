@@ -1,6 +1,6 @@
 # 路線圖（roadmap）— 工作流入口
 
-← [INDEX](../INDEX.md)｜[CLAUDE.md](../CLAUDE.md)
+← [index](../index.md)｜[CLAUDE.md](../CLAUDE.md)
 
 記一件**確定會做、但不確定何時**的事。比 [idea](idea.md) 更篤定（已決定要做），但還沒到 [spec](spec.md)（還沒展開設計）。
 

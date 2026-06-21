@@ -1,6 +1,6 @@
 # 工具與依賴（tooling）— 工作流入口
 
-← [INDEX](../INDEX.md)｜[CLAUDE.md](../CLAUDE.md)
+← [index](../index.md)｜[CLAUDE.md](../CLAUDE.md)
 
 用 / 設定外部工具、查依賴與 env var 的入口。codegen 本體刻意零執行期依賴（Python 版 `dependencies = []`），所以這裡很薄。
 

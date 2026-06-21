@@ -1,6 +1,6 @@
 # §11. CLI 介面草案 ｜ §12. 進度輸出與中斷處理 ｜ §13. 仍待決定 / 之後再說
 
-← [DESIGN/README](README.md)
+← [design/README](README.md)
 
 ## 11. CLI 介面草案
 

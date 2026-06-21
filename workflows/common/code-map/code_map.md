@@ -1,6 +1,6 @@
-# CODE_MAP — 程式碼導航
+# code_map — 程式碼導航
 
-← [common/README](../README.md)｜[INDEX](../../../INDEX.md)
+← [common/README](../README.md)｜[index](../../../index.md)
 
 程式碼導航 index。codegen 有**兩份功能對齊的實作**，模組**一一對應**：Python 在 `src/codegen/`，C++ 在 `cpp/src/`。權威的模組職責與資料結構說明在 [docs/design/architecture/](../../../docs/design/architecture/README.md)（§2 模組劃分見 README、§3 資料結構見 data-config.md），本檔是快速指路。
 
@@ -36,4 +36,4 @@
 
 ## 膨脹時
 
-模組多到單表難導航 → 照 [DEV-GUIDE](../../../DEV-GUIDE.md) 按領域拆成多份子 index（`CODE_MAP.<領域>.md`），本檔退回頂層導航。
+模組多到單表難導航 → 照 [dev-guide](../../../dev-guide.md) 按領域拆成多份子 index（`code_map.<領域>.md`），本檔退回頂層導航。

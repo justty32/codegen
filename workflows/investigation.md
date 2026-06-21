@@ -1,6 +1,6 @@
 # 調查（investigation）— 工作流入口
 
-← [INDEX](../INDEX.md)｜[CLAUDE.md](../CLAUDE.md)
+← [index](../index.md)｜[CLAUDE.md](../CLAUDE.md)
 
 **可行性調查 / 研究某個做法**的工作流：在動手前先搞清楚「這樣行不行、有哪些坑、別人怎麼做」。產出是**結論性的調查筆記**，餵給 [spec](spec.md) 或 [idea](idea.md)。
 

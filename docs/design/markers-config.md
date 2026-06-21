@@ -1,6 +1,6 @@
 # §3. Marker 與選項的設定
 
-← [DESIGN/README](README.md)
+← [design/README](README.md)
 
 ## 3. Marker 與選項的設定（多層覆寫）
 

@@ -1,6 +1,6 @@
 # 點子（idea）— 工作流入口
 
-← [INDEX](../INDEX.md)｜[CLAUDE.md](../CLAUDE.md)
+← [index](../index.md)｜[CLAUDE.md](../CLAUDE.md)
 
 記一個**奇思妙想**——還**不確定要不要做**的東西。門檻最低：想到就丟進來，不必先評估可行性或排期。
 

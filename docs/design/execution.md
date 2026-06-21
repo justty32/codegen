@@ -1,6 +1,6 @@
 # §4. Block 執行環境 ｜ §5. 輸出與保留原 source ｜ §6. 執行模型與嵌套
 
-← [DESIGN/README](README.md)
+← [design/README](README.md)
 
 ## 4. Block 執行環境
 

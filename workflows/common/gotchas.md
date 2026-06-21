@@ -14,7 +14,7 @@
 ## 平台
 
 - **Python 版不支援原生 Windows**（依賴 shebang / `chmod +x` / SIGINT）。Windows 上要嘛走 WSL、要嘛用 C++ 版。
-- **Windows 上的 C++ 版行為 Claude 驗不了** → 交使用者，記 [WAIT_USER](../../WAIT_USER.md)。
+- **Windows 上的 C++ 版行為 Claude 驗不了** → 交使用者，記 [wait_user](../../wait_user.md)。
 
 ## 建置
 

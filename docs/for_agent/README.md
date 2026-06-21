@@ -1,4 +1,4 @@
-← [docs](../) ｜ [INDEX](../../INDEX.md)
+← [docs](../) ｜ [index](../../index.md)
 
 # codegen 使用手冊（for AI agent）
 

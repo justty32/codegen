@@ -1,11 +1,11 @@
-# DEV-GUIDE — 結構整理參考（被動 / 按需取用）
+# dev-guide — 結構整理參考（被動 / 按需取用）
 
-← [INDEX](INDEX.md)
+← [index](index.md)
 
 這是一份**被動參考**，**不貫穿日常每個動作**——只在你要**重構 / 整理結構**（拆大檔、分類雜亂資料夾、長出新子工作流）時拿出來用。內容＝**結構整理原則**（含四級成長軌跡），docs / code / 任何資料夾通用。
 
-> **always-on 的鐵律**（行為不變、未經確認不 push/不開新工作、雙實作對齊、各工作流流程在自己入口檔）常駐在 [CLAUDE.md](CLAUDE.md)，**不在本檔重複**。「要做什麼」由 [WORKFLOWS.md](WORKFLOWS.md) 派發。
-> 只在**碰原始碼**時才適用的程式碼慣例與 CODE_MAP 維護鏈放在 [common/conventions.md](workflows/common/conventions.md)。
+> **always-on 的鐵律**（行為不變、未經確認不 push/不開新工作、雙實作對齊、各工作流流程在自己入口檔）常駐在 [CLAUDE.md](CLAUDE.md)，**不在本檔重複**。「要做什麼」由 [workflows.md](workflows.md) 派發。
+> 只在**碰原始碼**時才適用的程式碼慣例與 code_map 維護鏈放在 [common/conventions.md](workflows/common/conventions.md)。
 
 ---
 
@@ -29,7 +29,7 @@
 
 1. **單檔**：一個 `.md`，**檔名即其意義**（如 `testing.md`）。把 readme（導引）、index（結構）、實際內容…**全部揉在一起**。最輕量，**目前 codegen 多數工作流停在這一級**。
 2. **資料夾＋單 README**：膨脹到需要拆 → 變資料夾，但裡面**只有一個 `README.md`**；README 仍一肩扛導引 + 怎麼用 + 結構全部職責。
-3. **資料夾內不只 README**：README 再膨脹 → 拆出獨立檔各司其職：`INDEX.md`（頂層結構）、`session-log.md`（進度）、`gotchas.md`、`archive/`（封存過時文檔）、內容檔…。README 退回只做「先讀我」的導引。（目前 `common/` 在這一級。）
+3. **資料夾內不只 README**：README 再膨脹 → 拆出獨立檔各司其職：`index.md`（頂層結構）、`session-log.md`（進度）、`gotchas.md`、`archive/`（封存過時文檔）、內容檔…。README 退回只做「先讀我」的導引。（目前 `common/` 在這一級。）
 4. **資料夾內有子工作流**：大到內部得**再開巢狀工作流**，各子工作流自己又從第 1 級開始長。
 
 往哪一級走永遠由「是否膨脹/雜亂」決定，不預先過度設計。降級也成立：子項消失就往回併級。

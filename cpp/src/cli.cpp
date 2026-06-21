@@ -169,7 +169,7 @@ static int cmd_run(
 int main(int argc, char* argv[]) {
     std::signal(SIGINT, sigint_handler);
 
-    // Mirror the documented CLI (DESIGN §11): `run` is the default command and
+    // Mirror the documented CLI (design §11): `run` is the default command and
     // may be omitted. If the first argument is not a known subcommand or a help
     // flag, treat the whole invocation as an implicit `run`.
     std::vector<std::string> raw;

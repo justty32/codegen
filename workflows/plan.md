@@ -1,6 +1,6 @@
 # 動工計畫（plan）— 工作流入口
 
-← [INDEX](../INDEX.md)｜[CLAUDE.md](../CLAUDE.md)
+← [index](../index.md)｜[CLAUDE.md](../CLAUDE.md)
 
 把一個**已定案的設計方案**（[spec](spec.md)）展開成**動工前的詳細步驟**。產出是「照著做就能落地」的施工序，交給 [feature-dev](feature-dev.md) 執行。
 

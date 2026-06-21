@@ -1,6 +1,6 @@
 # codegen agent_skills.md
 
-← [docs](../) ｜ [INDEX](../../INDEX.md)
+← [docs](../) ｜ [index](../../index.md)
 
 這份文件教你兩件事：
 - **技能 A**：在檔案的指定位置新增一個 codegen block

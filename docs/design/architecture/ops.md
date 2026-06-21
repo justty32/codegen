@@ -83,7 +83,7 @@ cg.file_path() -> str
 
 ## 16. 目錄結構
 
-文檔已重組進 `docs/`、並採分層拆檔（每個大文件 → 資料夾 + README 索引）。倉庫頂層地圖見 [INDEX.md](../../../INDEX.md)；以下聚焦 Python 參考實作的 `src/` 與 `tests/`：
+文檔已重組進 `docs/`、並採分層拆檔（每個大文件 → 資料夾 + README 索引）。倉庫頂層地圖見 [index.md](../../../index.md)；以下聚焦 Python 參考實作的 `src/` 與 `tests/`：
 
 ```
 codegen/
@@ -94,7 +94,7 @@ codegen/
 │   ├── for_agent/                     # 給 AI agent 的使用手冊
 │   ├── agent_skills/                  # 新增 / 補全 block 的操作 playbook
 │   └── design/
-│       ├── DESIGN/                    # 設計文件
+│       ├── README.md                  # 設計文件（§1–§13，索引 + 分章檔）
 │       └── architecture/              # 架構文件（本文件所在）
 ├── src/
 │   ├── codegen/
@@ -160,7 +160,7 @@ codegen/
 
 ## 18. 暫不處理（之後再說）
 
-對應 DESIGN §13 + 一些實作面的判斷延後：
+對應 design §13 + 一些實作面的判斷延後：
 
 - Watch 模式
 - glob 對特定路徑套用不同 markers
