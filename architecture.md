@@ -529,6 +529,11 @@ codegen/
 - Watch 模式
 - glob 對特定路徑套用不同 markers
 - `--verbose` / `--quiet` / structured logging
-- Helper 之外的多語言便利庫（Ruby/JS 版 codegen_helper）
+- Helper 之外的多語言便利庫（Ruby/JS 版 codegen_helper；C++ 版已由 cpp/ 重寫提供，見下方備註）
 - Parallelism（明確不做：§6.1 單執行緒是設計保證）
-- Windows 支援（明確不做：§1）
+- Windows 支援（Python 版明確不做：§1；C++ 重寫已支援，見下方備註）
+
+> **備註：C++ 重寫。** 本文件描述的是 `src/codegen/` 的 Python 參考實作。專案另有一份功能對齊的
+> C++ 重寫位於 `cpp/`，並額外提供 Windows 支援、超時整樹 kill、`--run-as-user` 降權，以及
+> C++ block 用的 `cpp/include/codegen_helper.hpp`。建置與差異說明見
+> [`cpp/README.md`](cpp/README.md)。

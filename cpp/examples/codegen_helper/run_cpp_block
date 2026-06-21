@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# run_cpp_block — a shebang interpreter that compiles and runs a C++ codegen block.
+#
+# codegen executes a block by writing "<shebang>\n<body>" to a temp file, marking
+# it executable, and exec'ing it. The kernel then runs:  run_cpp_block <tempfile>
+# So $1 is the path to that temp file (shebang line included).
+#
+# We strip the shebang line, compile the rest as C++17 with the codegen_helper
+# header on the include path, and exec the resulting binary. The block's stdout
+# becomes the generated code that codegen splices back into the source file.
+#
+# The CODEGEN_* environment variables codegen sets are inherited by the compiled
+# program automatically, so codegen_helper.hpp's scope API works inside the block.
+set -euo pipefail
+
+src="$1"
+here="$(cd "$(dirname "$0")" && pwd)"
+inc="$(cd "$here/../../include" && pwd)"   # cpp/include, where codegen_helper.hpp lives
+
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+
+# Drop the shebang (line 1) so the compiler sees valid C++.
+tail -n +2 "$src" > "$work/block.cpp"
+
+g++ -std=c++17 -I"$inc" "$work/block.cpp" -o "$work/block" 1>&2
+
+exec "$work/block"
