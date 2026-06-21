@@ -30,6 +30,81 @@ cmake --build build
 
 ---
 
+## 安裝
+
+install 規則用 [`GNUInstallDirs`](https://cmake.org/cmake/help/latest/module/GNUInstallDirs.html)
+撰寫，安裝位置會跟著各平台慣例走，也支援 `DESTDIR`——因此同一份規則既能做個人安裝，
+也能直接給發行版打包（見下方「打包」）。
+
+### 個人安裝（建議：`~/.local`）
+
+照 XDG／現代 Linux 慣例，單一使用者安裝就裝到 `~/.local`（免 `sudo`）：
+
+```sh
+cd cpp
+cmake --install build --prefix ~/.local
+```
+
+會安裝到：
+
+| 檔案 | 安裝位置 |
+| --- | --- |
+| `codegen` 執行檔 | `~/.local/bin/codegen` |
+| `codegen_helper.hpp` | `~/.local/include/codegen_helper.hpp` |
+
+> 改了 `CMakeLists.txt`（含 install 規則）後，記得先重跑 `cmake -S . -B build` 再
+> `cmake --install`，否則會沿用舊的 install 設定。
+
+`~/.local/bin` 在多數現代發行版預設已在 `PATH`，所以 `codegen` 通常裝完即可直接執行。
+若你的 shell 沒有，請在 `~/.zshrc` 加上：
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+`~/.local/include` 預設**不在**編譯器的 include 搜尋路徑，要寫 C++ block helper 的話需補一次
+（在 `~/.zshrc` 加入後重開 shell 或 `source ~/.zshrc`）：
+
+```sh
+# 讓 #include <codegen_helper.hpp> 免 -I 即可被找到
+export CPLUS_INCLUDE_PATH="$HOME/.local/include:$CPLUS_INCLUDE_PATH"
+```
+
+設好後即可直接：
+
+```cpp
+#include <codegen_helper.hpp>   // 來自 ~/.local/include
+```
+
+```sh
+# 也可不設 CPLUS_INCLUDE_PATH，改用 -I 指定
+c++ -std=c++17 -I ~/.local/include my_block.cpp -o my_block
+```
+
+### 全系統安裝
+
+想裝給全系統用（傳統 FHS 位置 `/usr/local`，CMake 預設前綴），則：
+
+```sh
+sudo cmake --install build        # 省略 --prefix 即為 /usr/local
+```
+
+`/usr/local/bin`、`/usr/local/include` 預設就在 `PATH` 與 include 路徑內，裝完即可用。
+請勿手動安裝到 `/usr/bin`、`/usr/include`——那是套件管理器（pacman 等）的地盤。
+
+### 打包（AUR / deb / rpm）
+
+因為用了 `GNUInstallDirs` 並支援 `DESTDIR`，打包時不必改任何 build 設定，只要把前綴設成
+`/usr` 並安裝到打包暫存目錄即可。例如 Arch 的 `PKGBUILD`：
+
+```sh
+cmake -S cpp -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+DESTDIR="$pkgdir" cmake --install build --prefix /usr
+```
+
+---
+
 ## 使用
 
 ```sh

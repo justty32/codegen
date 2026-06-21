@@ -39,3 +39,12 @@ if(UNIX)
     # POSIX-only: needed for fork/exec/poll
     target_compile_definitions(codegen PRIVATE _POSIX_C_SOURCE=200809L)
 endif()
+
+# Installation: executable -> <prefix>/bin, C++ block helper header -> <prefix>/include.
+# GNUInstallDirs makes the destinations follow each platform's convention and play
+# nicely with DESTDIR, so the same rules work for a personal `--prefix ~/.local`
+# install and for distro packaging (AUR/deb/rpm: `--prefix /usr` + `DESTDIR=...`).
+include(GNUInstallDirs)
+install(TARGETS codegen RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/codegen_helper.hpp
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
