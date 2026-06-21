@@ -509,6 +509,17 @@ original = cg.origin_block()
 | `invoke_cwd()` | 執行 codegen 時的工作目錄 |
 | `file_path()` | 當前處理檔案的絕對路徑 |
 
+### 其他語言的 helper
+
+若用 **C++** 撰寫 block 腳本，可使用對應的單檔、零依賴 helper
+[`cpp/include/codegen_helper.hpp`](cpp/include/codegen_helper.hpp)（namespace `codegen`，
+提供 `global()/file()/block()` 三層 scope 與同一組唯讀 context）。它讀寫與 Python 版相同的
+scope JSON，值能跨語言互通；用法與可執行 demo 見
+[`cpp/examples/codegen_helper/`](cpp/examples/codegen_helper/)。
+
+其他語言（Shell、Ruby、JS…）目前沒有專屬 helper，直接讀寫 `CODEGEN_GLOBAL` /
+`CODEGEN_FILE` / `CODEGEN_BLOCK` 環境變數指向的 JSON 檔即可。
+
 ---
 
 ## 錯誤處理
