@@ -61,4 +61,4 @@ codegen rollback file.c   # 回滾到上一次備份
 
 ---
 
-完整說明請見 [README.md](README.md)。
+完整說明請見 [README.md](../README.md)。

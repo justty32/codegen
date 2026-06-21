@@ -536,4 +536,4 @@ codegen/
 > **備註：C++ 重寫。** 本文件描述的是 `src/codegen/` 的 Python 參考實作。專案另有一份功能對齊的
 > C++ 重寫位於 `cpp/`，並額外提供 Windows 支援、超時整樹 kill、`--run-as-user` 降權，以及
 > C++ block 用的 `cpp/include/codegen_helper.hpp`。建置與差異說明見
-> [`cpp/README.md`](cpp/README.md)。
+> [`cpp/README.md`](../../cpp/README.md)。
